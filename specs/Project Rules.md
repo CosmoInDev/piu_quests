@@ -30,3 +30,12 @@ This ruleset must be referenced and followed when working on any commands or fea
 - Please do not test 'how many times the method is called', unless it is impossible to test via unit test(like repository, etc).
 
 ---
+
+### 4. Directory setting
+
+- If frontend/backend apps are separated:
+  - Please create app on: (please keep in mind that this document is in '(root)/specs')
+    - frontend: (root)/app/frontend
+    - backend: (root)/app/backend
+- If frontend and backend apps are integrated into one app:
+  - Please create app on: (root)/app
