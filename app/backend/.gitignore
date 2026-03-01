@@ -1,0 +1,27 @@
+# Virtual environment
+.venv/
+
+# Environment variables (real secrets)
+.env
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Test / coverage cache
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# uv (lock file should be committed; these should not)
+# uv.lock is intentionally NOT listed here — commit it for reproducibility
+
+# OS
+.DS_Store
+Thumbs.db
