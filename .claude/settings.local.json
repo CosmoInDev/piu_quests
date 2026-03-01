@@ -14,7 +14,9 @@
       "Bash(rm:*)",
       "Bash(.venv/Scripts/alembic init:*)",
       "Bash(.venv/Scripts/python:*)",
-      "Bash(git:*)"
+      "Bash(git:*)",
+      "Bash(gh pr:*)",
+      "Bash(node:*)"
     ]
   }
 }
