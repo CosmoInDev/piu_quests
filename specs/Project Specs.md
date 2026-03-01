@@ -6,6 +6,7 @@ This document describes the specification for this project.
 
 # 1. Specs Overview
 
+- This project's name is "PIU Quests".
 - This project is for my friends' board, that has features:
   - Log-in via OAuth2
   - Has 'quest' boards
