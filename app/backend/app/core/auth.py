@@ -29,7 +29,7 @@ async def verify_google_token(token: str) -> dict:
             jwks,
             algorithms=["RS256"],
             audience=settings.google_client_id,
-            options={"verify_exp": True},
+            options={"verify_exp": True, "verify_at_hash": False},
         )
         return payload
     except JWTError as e:
@@ -39,6 +39,20 @@ async def verify_google_token(token: str) -> dict:
         )
 
 
+async def get_google_payload(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+) -> dict:
+    """Verify JWT and return Google payload dict (no DB access)."""
+    payload = await verify_google_token(credentials.credentials)
+    google_id: str = payload.get("sub")
+    if not google_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+    return payload
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
     session: AsyncSession = Depends(get_session),
@@ -46,18 +60,18 @@ async def get_current_user(
     payload = await verify_google_token(credentials.credentials)
     google_id: str = payload.get("sub")
     if not google_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
 
     result = await session.execute(select(User).where(User.google_id == google_id))
     user = result.scalar_one_or_none()
 
     if not user:
-        user = User(
-            google_id=google_id,
-            name=payload.get("name", ""),
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="user_not_found",
         )
-        session.add(user)
-        await session.commit()
-        await session.refresh(user)
 
     return user
