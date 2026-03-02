@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+import app.models  # noqa: F401 — registers all ORM models before any mapper is used
 from app.routers import users, quests, records, photos
 
 app = FastAPI(title="PIU Quests API", version="0.1.0")

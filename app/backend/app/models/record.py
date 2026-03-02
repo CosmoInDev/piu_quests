@@ -10,7 +10,7 @@ class Record(Base):
     __table_args__ = (UniqueConstraint("user_id", "quest_id", name="uq_record"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
     quest_id: Mapped[int] = mapped_column(ForeignKey("quests.id"), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(

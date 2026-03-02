@@ -1,9 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signIn, signOut, useSession } from "next-auth/react";
-import { Menu, LogOut, Home } from "lucide-react";
+import { signOut, useSession } from "next-auth/react";
+import { Menu, LogOut, LogIn, Home, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -12,6 +13,9 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { LoginModal } from "@/components/LoginModal";
+import { RegisterModal } from "@/components/RegisterModal";
+import { useCurrentUser } from "@/hooks/useUser";
 
 const NAV_LINKS = [
   { href: "/", label: "홈", icon: Home },
@@ -43,37 +47,62 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
 
 function AuthButton({ mobile = false }: { mobile?: boolean }) {
   const { data: session, status } = useSession();
+  const [loginOpen, setLoginOpen] = useState(false);
+  const isAuthenticated = status === "authenticated" && !!session;
+  const { user, checked, refetch } = useCurrentUser(isAuthenticated);
 
   if (status === "loading") return null;
 
-  if (session) {
+  // Not logged in: show login button
+  if (!session) {
     return (
-      <div className={`flex items-center gap-2 ${mobile ? "flex-col items-start" : ""}`}>
-        <span className="text-sm text-muted-foreground truncate max-w-[160px]">
-          {session.user?.name}
-        </span>
+      <>
         <Button
-          variant="ghost"
           size="sm"
-          onClick={() => signOut()}
-          className="text-muted-foreground hover:text-primary"
+          onClick={() => setLoginOpen(true)}
+          className="font-medium"
         >
-          <LogOut className="w-4 h-4 mr-1" />
-          로그아웃
+          <LogIn className="w-4 h-4 mr-1" />
+          로그인
         </Button>
-      </div>
+        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
+      </>
     );
   }
 
+  // OAuth done but backend user not yet checked
+  if (!checked) return null;
+
+  // OAuth done, no backend user → show registration modal
+  if (!user) {
+    return (
+      <RegisterModal
+        open={true}
+        defaultName={session.user?.name || ""}
+        onRegistered={refetch}
+      />
+    );
+  }
+
+  // Fully logged in
   return (
-    <Button
-      variant="ghost"
-      size="sm"
-      onClick={() => signIn("google")}
-      className="text-muted-foreground hover:text-primary font-medium"
-    >
-      로그인하세요
-    </Button>
+    <div className={`flex items-center gap-2 ${mobile ? "flex-col items-start" : ""}`}>
+      <Link
+        href="/settings"
+        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
+      >
+        <span className="truncate max-w-[160px]">{user.name}</span>
+        <Settings className="w-4 h-4" />
+      </Link>
+      <Button
+        size="sm"
+        onClick={() => signOut()}
+        className="font-medium"
+      >
+        <LogOut className="w-4 h-4 mr-1" />
+        로그아웃
+      </Button>
+    </div>
   );
 }
 
