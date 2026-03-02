@@ -7,8 +7,8 @@ export default async function QuestPage({ params }: Props) {
 
   return (
     <main className="container mx-auto px-4 py-8">
-      <h1 className="text-2xl font-bold text-primary mb-4">Quest {id}</h1>
-      <p className="text-muted-foreground">Quest details coming soon...</p>
+      <h1 className="text-2xl font-bold text-primary mb-4">퀘스트 {id}</h1>
+      <p className="text-muted-foreground">퀘스트 상세 정보를 준비 중입니다...</p>
     </main>
   );
 }

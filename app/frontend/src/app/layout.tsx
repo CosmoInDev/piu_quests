@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "PIU Quests",
-  description: "Track your Pump It Up rhythm game records with friends",
+  title: "망겜기록제출소",
+  description: "친구들과 함께하는 펌프 잇 업 기록 제출 서비스",
 };
 
 export default function RootLayout({
@@ -27,6 +27,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        suppressHydrationWarning
       >
         <Providers>{children}</Providers>
       </body>
