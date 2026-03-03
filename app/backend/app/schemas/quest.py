@@ -3,6 +3,12 @@ from pydantic import BaseModel
 from typing import Literal
 
 
+class ChartCreate(BaseModel):
+    song_name: str
+    difficulty: str
+    order: int
+
+
 class ChartOut(BaseModel):
     id: int
     quest_id: int
@@ -25,9 +31,19 @@ class QuestOut(BaseModel):
 
 
 class QuestCreate(BaseModel):
-    title: str
     start_date: date
     end_date: date
+    charts: list[ChartCreate]
+
+
+class PickRequest(BaseModel):
+    level: int
+    mode: Literal["single", "double"] | None = None
+
+
+class PickResponse(BaseModel):
+    song_name: str
+    difficulty: str
 
 
 ParticipantStatus = Literal["FINISHED", "SUBMITTING", "UNSUBMITTED"]
