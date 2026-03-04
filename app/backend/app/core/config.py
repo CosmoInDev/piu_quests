@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     supabase_service_key: str = ""
     google_client_id: str = ""
     gemini_api_key: str = ""
+    cors_origins: str = "http://localhost:3000"
 
 
 settings = Settings()
