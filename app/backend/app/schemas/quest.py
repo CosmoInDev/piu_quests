@@ -46,6 +46,33 @@ class PickResponse(BaseModel):
     difficulty: str
 
 
+class ChartSubmission(BaseModel):
+    user_id: int
+    user_name: str
+    score: int | None  # None = 미제출
+
+
+class ChartOverview(BaseModel):
+    chart_id: int
+    song_name: str
+    difficulty: str
+    order: int
+    submissions: list[ChartSubmission]
+
+
+class UserSummary(BaseModel):
+    user_id: int
+    user_name: str
+    submitted: int
+    total: int
+
+
+class QuestOverview(BaseModel):
+    quest: QuestOut
+    chart_overviews: list[ChartOverview]
+    user_summaries: list[UserSummary]
+
+
 ParticipantStatus = Literal["FINISHED", "SUBMITTING", "UNSUBMITTED"]
 
 

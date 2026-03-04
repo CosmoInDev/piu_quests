@@ -10,8 +10,19 @@ from app.core.auth import get_current_user
 from app.core.database import get_session
 from app.models.chart import Chart
 from app.models.quest import Quest
+from app.models.record import Record
+from app.models.record_item import RecordItem
 from app.models.user import User
-from app.schemas.quest import PickRequest, PickResponse, QuestCreate, QuestOut
+from app.schemas.quest import (
+    ChartOverview,
+    ChartSubmission,
+    PickRequest,
+    PickResponse,
+    QuestCreate,
+    QuestOut,
+    QuestOverview,
+    UserSummary,
+)
 
 router = APIRouter(prefix="/quests", tags=["quests"])
 
@@ -35,6 +46,81 @@ async def get_ongoing_quest(session: AsyncSession = Depends(get_session)) -> Que
         .where(and_(Quest.start_date <= today, Quest.end_date >= today))
     )
     return result.scalar_one_or_none()
+
+
+@router.get("/{quest_id}/overview", response_model=QuestOverview)
+async def get_quest_overview(
+    quest_id: int, session: AsyncSession = Depends(get_session)
+) -> QuestOverview:
+    # Load quest with charts
+    result = await session.execute(
+        select(Quest).options(selectinload(Quest.charts)).where(Quest.id == quest_id)
+    )
+    quest = result.scalar_one_or_none()
+    if not quest:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Quest not found")
+
+    # Load all users (all registered users are participants)
+    users_result = await session.execute(select(User).order_by(User.id))
+    users = users_result.scalars().all()
+    user_map = {u.id: u.name for u in users}
+
+    # Load all records + items for this quest
+    records_result = await session.execute(
+        select(Record)
+        .options(selectinload(Record.items))
+        .where(Record.quest_id == quest_id)
+    )
+    records = records_result.scalars().all()
+
+    # Build item lookup: (user_id, chart_id) -> score
+    item_map: dict[tuple[int, int], int] = {}
+    for record in records:
+        if record.user_id is None:
+            continue
+        for item in record.items:
+            item_map[(record.user_id, item.chart_id)] = item.score
+
+    charts = sorted(quest.charts, key=lambda c: c.order)
+
+    # Build chart overviews
+    chart_overviews = []
+    for chart in charts:
+        submissions = []
+        for user in users:
+            score = item_map.get((user.id, chart.id))
+            submissions.append(
+                ChartSubmission(user_id=user.id, user_name=user.name, score=score)
+            )
+        chart_overviews.append(
+            ChartOverview(
+                chart_id=chart.id,
+                song_name=chart.song_name,
+                difficulty=chart.difficulty,
+                order=chart.order,
+                submissions=submissions,
+            )
+        )
+
+    # Build user summaries
+    total_charts = len(charts)
+    user_summaries = []
+    for user in users:
+        submitted = sum(1 for c in charts if (user.id, c.id) in item_map)
+        user_summaries.append(
+            UserSummary(
+                user_id=user.id,
+                user_name=user.name,
+                submitted=submitted,
+                total=total_charts,
+            )
+        )
+
+    return QuestOverview(
+        quest=quest,
+        chart_overviews=chart_overviews,
+        user_summaries=user_summaries,
+    )
 
 
 @router.get("/{quest_id}", response_model=QuestOut)

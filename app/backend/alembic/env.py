@@ -16,6 +16,7 @@ import app.models.quest  # noqa: F401
 import app.models.chart  # noqa: F401
 import app.models.participant  # noqa: F401
 import app.models.record  # noqa: F401
+import app.models.record_item  # noqa: F401
 import app.models.photo  # noqa: F401
 
 config = context.config
