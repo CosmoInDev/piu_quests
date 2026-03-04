@@ -17,4 +17,6 @@ class Record(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
-    photos: Mapped[list["Photo"]] = relationship("Photo", back_populates="record", cascade="all, delete-orphan")
+    items: Mapped[list["RecordItem"]] = relationship(
+        "RecordItem", back_populates="record", cascade="all, delete-orphan"
+    )

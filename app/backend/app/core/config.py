@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_key: str = ""
     google_client_id: str = ""
+    gemini_api_key: str = ""
 
 
 settings = Settings()

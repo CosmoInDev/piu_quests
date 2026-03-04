@@ -9,9 +9,8 @@ class Photo(Base):
     __tablename__ = "photos"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    record_id: Mapped[int] = mapped_column(ForeignKey("records.id"), nullable=False)
-    chart_id: Mapped[int] = mapped_column(ForeignKey("charts.id"), nullable=False)
+    record_item_id: Mapped[int] = mapped_column(ForeignKey("record_items.id"), nullable=False)
     file_url: Mapped[str] = mapped_column(String(1024), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
-    record: Mapped["Record"] = relationship("Record", back_populates="photos")
+    record_item: Mapped["RecordItem"] = relationship("RecordItem", back_populates="photo")

@@ -30,18 +30,37 @@ export interface Participant {
   status: "FINISHED" | "SUBMITTING" | "UNSUBMITTED";
 }
 
-export interface Record {
-  id: string;
-  user_id: string;
-  quest_id: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface Photo {
-  id: string;
-  record_id: string;
-  chart_id: string;
+  id: number;
+  record_item_id: number;
   file_url: string;
   created_at: string;
+}
+
+export interface RecordItem {
+  id: number;
+  record_id: number;
+  chart_id: number;
+  song_name: string;
+  difficulty: string;
+  score: number;
+  created_at: string;
+  photo: Photo | null;
+}
+
+export interface Record {
+  id: number;
+  user_id: number;
+  quest_id: number;
+  created_at: string;
+  updated_at: string;
+  items: RecordItem[];
+}
+
+export interface PhotoAnalysisResult {
+  file_url: string;
+  extracted_song_name: string | null;
+  extracted_difficulty: string | null;
+  extracted_score: number | null;
+  matched_chart_id: number | null;
 }
