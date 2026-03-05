@@ -4,7 +4,8 @@ from pydantic import BaseModel, Field, field_validator
 
 class UserOut(BaseModel):
     id: int
-    google_id: str
+    google_id: str | None = None
+    kakao_id: str | None = None
     name: str
     created_at: datetime
 

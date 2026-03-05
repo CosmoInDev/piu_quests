@@ -10,6 +10,7 @@ from app.core.auth import get_current_user
 from app.core.database import get_session
 from app.models.chart import Chart
 from app.models.quest import Quest
+from app.models.photo import Photo
 from app.models.record import Record
 from app.models.record_item import RecordItem
 from app.models.user import User
@@ -65,21 +66,22 @@ async def get_quest_overview(
     users = users_result.scalars().all()
     user_map = {u.id: u.name for u in users}
 
-    # Load all records + items for this quest
+    # Load all records + items (with photos) for this quest
     records_result = await session.execute(
         select(Record)
-        .options(selectinload(Record.items))
+        .options(selectinload(Record.items).selectinload(RecordItem.photo))
         .where(Record.quest_id == quest_id)
     )
     records = records_result.scalars().all()
 
-    # Build item lookup: (user_id, chart_id) -> score
-    item_map: dict[tuple[int, int], int] = {}
+    # Build item lookup: (user_id, chart_id) -> (score, photo_url)
+    item_map: dict[tuple[int, int], tuple[int, str | None]] = {}
     for record in records:
         if record.user_id is None:
             continue
         for item in record.items:
-            item_map[(record.user_id, item.chart_id)] = item.score
+            photo_url = item.photo.file_url if item.photo else None
+            item_map[(record.user_id, item.chart_id)] = (item.score, photo_url)
 
     charts = sorted(quest.charts, key=lambda c: c.order)
 
@@ -88,9 +90,11 @@ async def get_quest_overview(
     for chart in charts:
         submissions = []
         for user in users:
-            score = item_map.get((user.id, chart.id))
+            entry = item_map.get((user.id, chart.id))
+            score = entry[0] if entry else None
+            photo_url = entry[1] if entry else None
             submissions.append(
-                ChartSubmission(user_id=user.id, user_name=user.name, score=score)
+                ChartSubmission(user_id=user.id, user_name=user.name, score=score, photo_url=photo_url)
             )
         chart_overviews.append(
             ChartOverview(
@@ -106,7 +110,7 @@ async def get_quest_overview(
     total_charts = len(charts)
     user_summaries = []
     for user in users:
-        submitted = sum(1 for c in charts if (user.id, c.id) in item_map)
+        submitted = sum(1 for c in charts if item_map.get((user.id, c.id)) is not None)
         user_summaries.append(
             UserSummary(
                 user_id=user.id,

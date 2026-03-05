@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     google_client_id: str = ""
     gemini_api_key: str = ""
     cors_origins: str = "http://localhost:3000"
+    nextauth_secret: str = ""
 
 
 settings = Settings()
