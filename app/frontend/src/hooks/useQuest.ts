@@ -49,6 +49,7 @@ export interface ChartSubmission {
   user_id: number;
   user_name: string;
   score: number | null;
+  photo_url: string | null;
 }
 
 export interface ChartOverview {

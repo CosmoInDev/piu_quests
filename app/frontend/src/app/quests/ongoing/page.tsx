@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 import { useOngoingQuest, useQuestOverview } from "@/hooks/useQuest";
 import { useCurrentUser } from "@/hooks/useUser";
 import SubmitModal from "@/components/SubmitModal";
+import { PhotoModal } from "@/components/PhotoModal";
 import { Button } from "@/components/ui/button";
 import type { ChartOverview, UserSummary } from "@/hooks/useQuest";
 
@@ -18,6 +19,7 @@ export default function OngoingQuestPage() {
   );
   const [expandedChartIds, setExpandedChartIds] = useState<Set<number>>(new Set());
   const [submitOpen, setSubmitOpen] = useState(false);
+  const [photoModal, setPhotoModal] = useState<{ url: string | null; userName: string } | null>(null);
 
   if (loading) {
     return (
@@ -121,7 +123,7 @@ export default function OngoingQuestPage() {
                   {/* Expanded: all users' submissions */}
                   {isExpanded && (
                     <div className="border border-t-0 rounded-b-lg px-4 py-3 space-y-1 bg-muted/30">
-                      <div className="inline-grid grid-cols-[auto_auto] gap-x-4 gap-y-1 text-sm">
+                      <div className="inline-grid grid-cols-[auto_auto_auto] gap-x-4 gap-y-1 text-sm">
                         {chart.submissions.map((sub) => (
                           <div key={sub.user_id} className="contents">
                             <span>{sub.user_name}</span>
@@ -135,6 +137,19 @@ export default function OngoingQuestPage() {
                               {sub.score !== null
                                 ? sub.score.toLocaleString()
                                 : "미제출"}
+                            </span>
+                            <span>
+                              {sub.photo_url ? (
+                                <button
+                                  type="button"
+                                  onClick={() => setPhotoModal({ url: sub.photo_url, userName: sub.user_name })}
+                                  className="text-xs text-primary underline hover:opacity-70 transition-opacity whitespace-nowrap"
+                                >
+                                  제출 사진 보기
+                                </button>
+                              ) : (
+                                <span />
+                              )}
                             </span>
                           </div>
                         ))}
@@ -178,6 +193,16 @@ export default function OngoingQuestPage() {
             order: c.order,
           }))}
           onSubmitted={refetch}
+        />
+      )}
+
+      {/* Photo modal */}
+      {photoModal && (
+        <PhotoModal
+          open={!!photoModal}
+          onOpenChange={(open) => { if (!open) setPhotoModal(null); }}
+          photoUrl={photoModal.url}
+          userName={photoModal.userName}
         />
       )}
     </div>
