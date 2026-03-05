@@ -45,7 +45,7 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
   );
 }
 
-function AuthButton({ mobile = false }: { mobile?: boolean }) {
+function AuthButton({ mobile = false, iconOnly = false }: { mobile?: boolean; iconOnly?: boolean }) {
   const { data: session, status } = useSession();
   const [loginOpen, setLoginOpen] = useState(false);
   const isAuthenticated = status === "authenticated" && !!session;
@@ -62,8 +62,8 @@ function AuthButton({ mobile = false }: { mobile?: boolean }) {
           onClick={() => setLoginOpen(true)}
           className="font-medium"
         >
-          <LogIn className="w-4 h-4 mr-1" />
-          로그인
+          <LogIn className="w-4 h-4" />
+          {!iconOnly && <span className="ml-1">로그인</span>}
         </Button>
         <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
       </>
@@ -85,6 +85,14 @@ function AuthButton({ mobile = false }: { mobile?: boolean }) {
   }
 
   // Fully logged in
+  if (iconOnly) {
+    return (
+      <Button size="sm" variant="ghost" onClick={() => signOut()} className="font-medium px-2">
+        <LogOut className="w-4 h-4" />
+      </Button>
+    );
+  }
+
   return (
     <div className={`flex items-center gap-2 ${mobile ? "flex-col items-start" : ""}`}>
       <Link
@@ -143,6 +151,11 @@ export function Navbar() {
         </nav>
         <div className="hidden md:flex items-center ml-auto">
           <AuthButton />
+        </div>
+
+        {/* Mobile: compact auth button always visible on the right */}
+        <div className="md:hidden ml-auto">
+          <AuthButton iconOnly />
         </div>
       </div>
     </header>

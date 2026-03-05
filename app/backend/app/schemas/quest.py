@@ -50,6 +50,7 @@ class ChartSubmission(BaseModel):
     user_id: int
     user_name: str
     score: int | None  # None = 미제출
+    photo_url: str | None = None
 
 
 class ChartOverview(BaseModel):

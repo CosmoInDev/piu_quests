@@ -3,7 +3,8 @@ import api from "@/lib/api";
 
 export interface BackendUser {
   id: number;
-  google_id: string;
+  google_id: string | null;
+  kakao_id: string | null;
   name: string;
   created_at: string;
 }
