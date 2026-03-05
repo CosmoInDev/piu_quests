@@ -59,7 +59,6 @@ function createEmptyRow(): UploadRow {
   };
 }
 
-const MAX_ROWS = 8;
 const MAX_FILE_SIZE = 30 * 1024 * 1024;
 
 export default function SubmitModal({
@@ -113,9 +112,7 @@ export default function SubmitModal({
     []
   );
 
-  async function handleFileChange(rowId: number, file: File | null) {
-    if (!file) return;
-
+  async function processFileForRow(rowId: number, file: File) {
     if (!file.type.startsWith("image/")) {
       updateRow(rowId, { error: "이미지 파일만 업로드할 수 있습니다." });
       return;
@@ -151,9 +148,23 @@ export default function SubmitModal({
     }
   }
 
-  function addRow() {
-    if (rows.length >= MAX_ROWS) return;
-    setRows((prev) => [...prev, createEmptyRow()]);
+  function handleFileChange(rowId: number, files: FileList | null) {
+    if (!files || files.length === 0) return;
+
+    // First file goes to the current row
+    processFileForRow(rowId, files[0]);
+
+    // Additional files each get a new row
+    for (let i = 1; i < files.length; i++) {
+      const newRow = addRow();
+      processFileForRow(newRow.id, files[i]);
+    }
+  }
+
+  function addRow(): UploadRow {
+    const newRow = createEmptyRow();
+    setRows((prev) => [...prev, newRow]);
+    return newRow;
   }
 
   function removeRow(rowId: number) {
@@ -199,6 +210,17 @@ export default function SubmitModal({
       if (scoreNum < 0 || scoreNum > 1000000)
         return "점수는 0~1,000,000 범위여야 합니다.";
     }
+
+    // Check for duplicate (song_name, difficulty) pairs
+    const seen = new Set<string>();
+    for (const r of rowsWithFile) {
+      const key = `${r.song_name.trim()}|${r.difficulty.trim()}`;
+      if (seen.has(key)) {
+        return `중복된 곡이 있습니다: ${r.song_name.trim()} ${r.difficulty.trim()}`;
+      }
+      seen.add(key);
+    }
+
     return null;
   }
 
@@ -280,9 +302,11 @@ export default function SubmitModal({
                     <input
                       type="file"
                       accept="image/*"
-                      onChange={(e) =>
-                        handleFileChange(row.id, e.target.files?.[0] ?? null)
-                      }
+                      multiple
+                      onChange={(e) => {
+                        handleFileChange(row.id, e.target.files);
+                        e.target.value = "";
+                      }}
                       className="block w-full text-sm file:mr-2 file:rounded file:border-0 file:bg-secondary file:px-3 file:py-1 file:text-sm file:font-medium"
                     />
                     {row.error && (
@@ -366,11 +390,9 @@ export default function SubmitModal({
               </p>
             )}
 
-            {rows.length < MAX_ROWS && (
-              <Button variant="outline" size="sm" onClick={addRow}>
-                + 사진 추가
-              </Button>
-            )}
+            <Button variant="outline" size="sm" onClick={() => addRow()}>
+              + 사진 추가
+            </Button>
           </div>
         )}
 
