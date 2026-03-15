@@ -96,6 +96,32 @@ export function useQuestOverview(questId: number | null) {
   return { overview, loading, refetch };
 }
 
+export interface QuestBasic {
+  id: number;
+  title: string;
+  start_date: string;
+  end_date: string;
+  created_at: string;
+}
+
+export function usePastQuests() {
+  const [quests, setQuests] = useState<QuestBasic[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api
+      .get("/quests")
+      .then((res) => {
+        const today = new Date().toISOString().slice(0, 10);
+        setQuests((res.data as QuestBasic[]).filter((q) => q.end_date < today));
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { quests, loading };
+}
+
 export async function createQuest(data: {
   start_date: string;
   end_date: string;

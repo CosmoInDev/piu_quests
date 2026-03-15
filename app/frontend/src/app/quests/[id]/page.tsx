@@ -1,14 +1,157 @@
+"use client";
+
+import { use, useState } from "react";
+import { useQuestOverview } from "@/hooks/useQuest";
+import { PhotoModal } from "@/components/PhotoModal";
+import type { ChartOverview, UserSummary } from "@/hooks/useQuest";
+
 interface Props {
   params: Promise<{ id: string }>;
 }
 
-export default async function QuestPage({ params }: Props) {
-  const { id } = await params;
+export default function QuestPage({ params }: Props) {
+  const { id } = use(params);
+  const questId = Number(id);
+
+  const { overview, loading } = useQuestOverview(isNaN(questId) ? null : questId);
+  const [expandedChartIds, setExpandedChartIds] = useState<Set<number>>(new Set());
+  const [photoModal, setPhotoModal] = useState<{ url: string | null; userName: string } | null>(null);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-muted-foreground text-lg">불러오는 중...</p>
+      </div>
+    );
+  }
+
+  if (!overview) {
+    return (
+      <div className="flex items-center justify-center py-24">
+        <p className="text-muted-foreground text-lg">숙제를 찾을 수 없습니다.</p>
+      </div>
+    );
+  }
+
+  const { quest, chart_overviews: chartOverviews, user_summaries: userSummaries } = overview;
+
+  function toggleChart(chartId: number) {
+    setExpandedChartIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(chartId)) {
+        next.delete(chartId);
+      } else {
+        next.add(chartId);
+      }
+      return next;
+    });
+  }
+
+  function summaryColor(us: UserSummary): string {
+    if (us.total === 0) return "";
+    if (us.submitted === us.total) return "text-green-600";
+    if (us.submitted === 0) return "text-red-600";
+    return "";
+  }
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-primary mb-4">퀘스트 {id}</h1>
-      <p className="text-muted-foreground">퀘스트 상세 정보를 준비 중입니다...</p>
+      <div className="mb-2">
+        <h1 className="text-2xl font-bold text-primary">{quest.title}</h1>
+      </div>
+      <p className="text-sm text-muted-foreground mb-6">
+        {quest.start_date} ~ {quest.end_date}
+      </p>
+
+      {/* Chart list */}
+      <div className="grid gap-3 mb-8">
+        {chartOverviews.map((chart: ChartOverview) => {
+          const isExpanded = expandedChartIds.has(chart.chart_id);
+
+          return (
+            <div key={chart.chart_id}>
+              <button
+                type="button"
+                onClick={() => toggleChart(chart.chart_id)}
+                className="w-full flex items-center gap-4 rounded-lg border p-4 text-left hover:bg-accent/50 transition-colors cursor-pointer"
+              >
+                <span className="inline-flex items-center justify-center rounded-md bg-secondary px-3 py-1 text-sm font-semibold min-w-[64px] text-center">
+                  {chart.difficulty}
+                </span>
+                <span className="text-base flex-1">{chart.song_name}</span>
+                <span className="text-muted-foreground text-xs">
+                  {isExpanded ? "▲" : "▼"}
+                </span>
+              </button>
+
+              {isExpanded && (
+                <div className="border border-t-0 rounded-b-lg px-4 py-3 space-y-1 bg-muted/30">
+                  <div className="inline-grid grid-cols-[auto_auto_auto] gap-x-4 gap-y-1 text-sm">
+                    {chart.submissions.map((sub) => (
+                      <div key={sub.user_id} className="contents">
+                        <span>{sub.user_name}</span>
+                        <span
+                          className={
+                            sub.score !== null
+                              ? "font-mono text-right"
+                              : "text-muted-foreground text-right"
+                          }
+                        >
+                          {sub.score !== null ? sub.score.toLocaleString() : "미제출"}
+                        </span>
+                        <span>
+                          {sub.photo_url ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setPhotoModal({ url: sub.photo_url, userName: sub.user_name })
+                              }
+                              className="text-xs text-primary underline hover:opacity-70 transition-opacity whitespace-nowrap"
+                            >
+                              제출 사진 보기
+                            </button>
+                          ) : (
+                            <span />
+                          )}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* User submission summary */}
+      {userSummaries.length > 0 && (
+        <div>
+          <h2 className="text-lg font-semibold mb-3">제출 현황</h2>
+          <div className="inline-grid grid-cols-[auto_auto] gap-x-4 gap-y-2 text-sm rounded-lg border px-4 py-3">
+            {userSummaries.map((us: UserSummary) => (
+              <div key={us.user_id} className={`contents ${summaryColor(us)}`}>
+                <span className="font-medium">{us.user_name}</span>
+                <span className="text-right">
+                  {us.submitted}/{us.total} 제출
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Photo modal */}
+      {photoModal && (
+        <PhotoModal
+          open={!!photoModal}
+          onOpenChange={(open) => {
+            if (!open) setPhotoModal(null);
+          }}
+          photoUrl={photoModal.url}
+          userName={photoModal.userName}
+        />
+      )}
     </div>
   );
 }
