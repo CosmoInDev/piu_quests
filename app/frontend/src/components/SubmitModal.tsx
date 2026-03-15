@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import axios from "axios";
 import { analyzePhoto, submitRecord, getMyRecord } from "@/hooks/useRecord";
 import type { PhotoAnalysisResult } from "@/types";
 
@@ -130,8 +131,12 @@ export default function SubmitModal({
       error: null,
     });
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
     try {
-      const result: PhotoAnalysisResult = await analyzePhoto(questId, file);
+      const result: PhotoAnalysisResult = await analyzePhoto(questId, file, controller.signal);
+      clearTimeout(timeoutId);
       updateRow(rowId, {
         analyzing: false,
         file_url: result.file_url,
@@ -140,11 +145,17 @@ export default function SubmitModal({
         difficulty: result.extracted_difficulty ?? "",
         score: result.extracted_score?.toString() ?? "",
       });
-    } catch {
-      updateRow(rowId, {
-        analyzing: false,
-        error: "사진 분석에 실패했습니다. 정보를 직접 입력해주세요.",
-      });
+    } catch (err) {
+      clearTimeout(timeoutId);
+      if (axios.isCancel(err)) {
+        // 15s timeout: clear spinner, leave fields blank for manual input
+        updateRow(rowId, { analyzing: false });
+      } else {
+        updateRow(rowId, {
+          analyzing: false,
+          error: "사진 분석에 실패했습니다. 정보를 직접 입력해주세요.",
+        });
+      }
     }
   }
 

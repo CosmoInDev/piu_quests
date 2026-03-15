@@ -3,14 +3,15 @@ import type { Record, PhotoAnalysisResult } from "@/types";
 
 export async function analyzePhoto(
   questId: number,
-  file: File
+  file: File,
+  signal?: AbortSignal
 ): Promise<PhotoAnalysisResult> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post<PhotoAnalysisResult>(
     `/photos/analyze?quest_id=${questId}`,
     formData,
-    { headers: { "Content-Type": "multipart/form-data" } }
+    { headers: { "Content-Type": "multipart/form-data" }, signal }
   );
   return res.data;
 }
