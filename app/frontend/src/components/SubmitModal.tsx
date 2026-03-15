@@ -261,7 +261,8 @@ export default function SubmitModal({
         <DialogHeader>
           <DialogTitle>숙제 제출</DialogTitle>
           <DialogDescription>
-            결과 사진을 업로드하면 자동으로 정보를 추출합니다.
+            결과 사진을 업로드하면 자동으로 정보를 추출합니다.<br />
+            사진 제출 시, 여러 장을 한 번에 체크하여 업로드할 수 있습니다.
           </DialogDescription>
         </DialogHeader>
 
