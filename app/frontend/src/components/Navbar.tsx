@@ -134,7 +134,7 @@ export function Navbar() {
               <div className="mt-6 flex flex-col gap-1">
                 <NavLinks />
               </div>
-              <div className="mt-6 border-t pt-4">
+              <div className="mt-6 border-t pt-4 px-3">
                 <AuthButton mobile />
               </div>
             </SheetContent>
