@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { AxiosError } from "axios";
 import api from "@/lib/api";
 
 export interface BackendUser {
@@ -9,9 +10,15 @@ export interface BackendUser {
   created_at: string;
 }
 
+const MAX_RETRIES = 5;
+const RETRY_DELAY_MS = 3000;
+
 /**
  * Fetch current user from backend.
- * Returns null if user is not registered (404).
+ * - 200: user found
+ * - 404: user not registered → show registration modal
+ * - other errors: transient (cold start, network) → retry up to MAX_RETRIES times
+ *   to avoid falsely showing the registration modal on backend startup delay.
  */
 export function useCurrentUser(enabled: boolean) {
   const [user, setUser] = useState<BackendUser | null>(null);
@@ -20,15 +27,30 @@ export function useCurrentUser(enabled: boolean) {
 
   const refetch = useCallback(async () => {
     setLoading(true);
-    try {
-      const res = await api.get<BackendUser>("/users/me");
-      setUser(res.data);
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-      setChecked(true);
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const res = await api.get<BackendUser>("/users/me");
+        setUser(res.data);
+        setChecked(true);
+        setLoading(false);
+        return;
+      } catch (err) {
+        const httpStatus = (err as AxiosError)?.response?.status;
+        if (httpStatus === 404) {
+          // Definitively not registered
+          setUser(null);
+          setChecked(true);
+          setLoading(false);
+          return;
+        }
+        // Transient error (5xx, network timeout, cold start): wait and retry
+        if (attempt < MAX_RETRIES) {
+          await new Promise<void>((resolve) => setTimeout(resolve, RETRY_DELAY_MS));
+        }
+      }
     }
+    // All retries exhausted without a definitive answer: stay in loading state
+    setLoading(false);
   }, []);
 
   useEffect(() => {
