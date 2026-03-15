@@ -21,6 +21,7 @@ const NAV_LINKS = [
   { href: "/", label: "홈", icon: Home },
   { href: "/quests/ongoing", label: "오늘의 숙제", icon: null },
   { href: "/quests/past", label: "지난번 숙제", icon: null },
+  { href: "/picks", label: "추첨 테스트", icon: null },
 ];
 
 function NavLinks({ onClick }: { onClick?: () => void }) {
