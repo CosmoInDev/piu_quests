@@ -1,8 +1,17 @@
 "use client";
 
 import { use, useState } from "react";
+import { Clipboard } from "lucide-react";
 import { useQuestOverview } from "@/hooks/useQuest";
 import { PhotoModal } from "@/components/PhotoModal";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ChartOverview, UserSummary } from "@/hooks/useQuest";
 
 interface Props {
@@ -16,6 +25,7 @@ export default function QuestPage({ params }: Props) {
   const { overview, loading } = useQuestOverview(isNaN(questId) ? null : questId);
   const [expandedChartIds, setExpandedChartIds] = useState<Set<number>>(new Set());
   const [photoModal, setPhotoModal] = useState<{ url: string | null; userName: string } | null>(null);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
 
   if (loading) {
     return (
@@ -34,6 +44,16 @@ export default function QuestPage({ params }: Props) {
   }
 
   const { quest, chart_overviews: chartOverviews, user_summaries: userSummaries } = overview;
+
+  function handleCopy() {
+    const [, mm, dd] = quest.end_date.split("-");
+    const header = `숙제 지정곡(~${mm}/${dd})`;
+    const lines = [...chartOverviews]
+      .sort((a, b) => a.order - b.order)
+      .map((c) => `${c.song_name} ${c.difficulty}`);
+    navigator.clipboard.writeText([header, ...lines].join("\n"));
+    setCopyModalOpen(true);
+  }
 
   function toggleChart(chartId: number) {
     setExpandedChartIds((prev) => {
@@ -56,8 +76,16 @@ export default function QuestPage({ params }: Props) {
 
   return (
     <div>
-      <div className="mb-2">
+      <div className="flex items-center gap-2 mb-2">
         <h1 className="text-2xl font-bold text-primary">{quest.title}</h1>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          title="지정곡 목록 복사"
+        >
+          <Clipboard size={18} />
+        </button>
       </div>
       <p className="text-sm text-muted-foreground mb-6">
         {quest.start_date} ~ {quest.end_date}
@@ -140,6 +168,19 @@ export default function QuestPage({ params }: Props) {
           </div>
         </div>
       )}
+
+      {/* Copy confirmation modal */}
+      <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>복사 완료</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">클립보드에 복사되었습니다.</p>
+          <DialogFooter>
+            <Button onClick={() => setCopyModalOpen(false)}>확인</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Photo modal */}
       {photoModal && (

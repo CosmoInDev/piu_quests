@@ -3,11 +3,19 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
+import { Clipboard } from "lucide-react";
 import { useOngoingQuest, useQuestOverview } from "@/hooks/useQuest";
 import { useCurrentUser } from "@/hooks/useUser";
 import SubmitModal from "@/components/SubmitModal";
 import { PhotoModal } from "@/components/PhotoModal";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ChartOverview, UserSummary } from "@/hooks/useQuest";
 
 export default function OngoingQuestPage() {
@@ -20,6 +28,18 @@ export default function OngoingQuestPage() {
   const [expandedChartIds, setExpandedChartIds] = useState<Set<number>>(new Set());
   const [submitOpen, setSubmitOpen] = useState(false);
   const [photoModal, setPhotoModal] = useState<{ url: string | null; userName: string } | null>(null);
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+
+  function handleCopy() {
+    if (!quest) return;
+    const [, mm, dd] = quest.end_date.split("-");
+    const header = `숙제 지정곡(~${mm}/${dd})`;
+    const lines = [...quest.charts]
+      .sort((a, b) => a.order - b.order)
+      .map((c) => `${c.song_name} ${c.difficulty}`);
+    navigator.clipboard.writeText([header, ...lines].join("\n"));
+    setCopyModalOpen(true);
+  }
 
   if (loading) {
     return (
@@ -78,7 +98,17 @@ export default function OngoingQuestPage() {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <h1 className="text-2xl font-bold text-primary">{quest.title}</h1>
+        <div className="flex items-center gap-2">
+          <h1 className="text-2xl font-bold text-primary">{quest.title}</h1>
+          <button
+            type="button"
+            onClick={handleCopy}
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="지정곡 목록 복사"
+          >
+            <Clipboard size={18} />
+          </button>
+        </div>
         {currentUser && (
           <Button size="sm" onClick={() => setSubmitOpen(true)}>
             제출
@@ -195,6 +225,19 @@ export default function OngoingQuestPage() {
           onSubmitted={refetch}
         />
       )}
+
+      {/* Copy confirmation modal */}
+      <Dialog open={copyModalOpen} onOpenChange={setCopyModalOpen}>
+        <DialogContent className="max-w-xs">
+          <DialogHeader>
+            <DialogTitle>복사 완료</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">클립보드에 복사되었습니다.</p>
+          <DialogFooter>
+            <Button onClick={() => setCopyModalOpen(false)}>확인</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Photo modal */}
       {photoModal && (
