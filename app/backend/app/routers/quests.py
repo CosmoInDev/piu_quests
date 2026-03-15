@@ -1,4 +1,6 @@
-from datetime import date
+from datetime import date, datetime, timezone, timedelta
+
+KST = timezone(timedelta(hours=9))
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -40,7 +42,7 @@ async def list_quests(session: AsyncSession = Depends(get_session)) -> list[Ques
 
 @router.get("/ongoing", response_model=QuestOut | None)
 async def get_ongoing_quest(session: AsyncSession = Depends(get_session)) -> Quest | None:
-    today = date.today()
+    today = datetime.now(KST).date()
     result = await session.execute(
         select(Quest)
         .options(selectinload(Quest.charts))
@@ -145,7 +147,7 @@ async def create_quest(
     current_user: User = Depends(get_current_user),
 ) -> Quest:
     # Validate date range includes today
-    today = date.today()
+    today = datetime.now(KST).date()
     if body.start_date > today or body.end_date < today:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,

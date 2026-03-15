@@ -112,7 +112,7 @@ export function usePastQuests() {
     api
       .get("/quests")
       .then((res) => {
-        const today = new Date().toISOString().slice(0, 10);
+        const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
         setQuests((res.data as QuestBasic[]).filter((q) => q.end_date < today));
       })
       .catch(() => {})
