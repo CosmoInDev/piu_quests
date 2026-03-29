@@ -1,11 +1,14 @@
 import asyncio
 import json
+import logging
 import re
 
 from google import genai
 from google.genai import types
 
 from app.core.config import settings
+
+logger = logging.getLogger(__name__)
 
 PROMPT = """이 사진은 Pump It Up 리듬 게임의 결과 화면입니다.
 다음 정보를 추출해주세요:
@@ -35,7 +38,7 @@ def _call_gemini(image_bytes: bytes, mime_type: str) -> dict:
     client = genai.Client(api_key=settings.gemini_api_key)
 
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
+        model="gemini-3-flash-latest",
         contents=[
             types.Part.from_text(text=PROMPT),
             types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
@@ -52,6 +55,7 @@ async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     try:
         result = await asyncio.to_thread(_call_gemini, image_bytes, mime_type)
     except Exception:
+        logger.exception("Gemini vision analysis failed")
         result = {"song_name": None, "difficulty": None, "score": None}
 
     # Normalize: ensure all expected keys exist
