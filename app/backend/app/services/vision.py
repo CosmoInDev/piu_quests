@@ -33,9 +33,9 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-def _call_gemini(image_bytes: bytes, mime_type: str) -> dict:
+def _call_gemini(image_bytes: bytes, mime_type: str, api_key: str) -> dict:
     """Synchronous Gemini API call."""
-    client = genai.Client(api_key=settings.gemini_api_key)
+    client = genai.Client(api_key=api_key)
 
     response = client.models.generate_content(
         model="gemini-3-flash-preview",
@@ -47,15 +47,37 @@ def _call_gemini(image_bytes: bytes, mime_type: str) -> dict:
     return _extract_json(response.text)
 
 
+def _get_api_keys() -> list[str]:
+    """Return list of available Gemini API keys."""
+    keys = [settings.gemini_api_key]
+    if settings.gemini_api_key_spare:
+        keys.append(settings.gemini_api_key_spare)
+    return [k for k in keys if k]
+
+
 async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     """Analyze a PIU game result photo and extract song_name, difficulty, score.
 
+    Tries spare API key on 429 RESOURCE_EXHAUSTED.
     Returns dict with keys: song_name, difficulty, score (any may be None).
     """
-    try:
-        result = await asyncio.to_thread(_call_gemini, image_bytes, mime_type)
-    except Exception:
-        logger.exception("Gemini vision analysis failed")
+    for api_key in _get_api_keys():
+        try:
+            result = await asyncio.to_thread(_call_gemini, image_bytes, mime_type, api_key)
+            break
+        except genai.errors.ClientError as e:
+            if e.code == 429:
+                logger.warning("Gemini 429 RESOURCE_EXHAUSTED, trying next key")
+                continue
+            logger.exception("Gemini vision analysis failed")
+            result = {"song_name": None, "difficulty": None, "score": None}
+            break
+        except Exception:
+            logger.exception("Gemini vision analysis failed")
+            result = {"song_name": None, "difficulty": None, "score": None}
+            break
+    else:
+        logger.error("All Gemini API keys exhausted (429)")
         result = {"song_name": None, "difficulty": None, "score": None}
 
     # Normalize: ensure all expected keys exist
