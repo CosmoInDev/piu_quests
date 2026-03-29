@@ -55,19 +55,33 @@ def _get_api_keys() -> list[str]:
     return [k for k in keys if k]
 
 
+_active_key_index = 0
+
+
 async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     """Analyze a PIU game result photo and extract song_name, difficulty, score.
 
-    Tries spare API key on 429 RESOURCE_EXHAUSTED.
+    Switches active API key on 429 RESOURCE_EXHAUSTED so subsequent requests
+    go straight to the working key.
     Returns dict with keys: song_name, difficulty, score (any may be None).
     """
-    for api_key in _get_api_keys():
+    global _active_key_index
+    keys = _get_api_keys()
+    if not keys:
+        logger.error("No Gemini API keys configured")
+        return {"song_name": None, "difficulty": None, "score": None}
+
+    tried = 0
+    while tried < len(keys):
+        api_key = keys[_active_key_index % len(keys)]
         try:
             result = await asyncio.to_thread(_call_gemini, image_bytes, mime_type, api_key)
             break
         except genai.errors.ClientError as e:
             if e.code == 429:
-                logger.warning("Gemini 429 RESOURCE_EXHAUSTED, trying next key")
+                _active_key_index = (_active_key_index + 1) % len(keys)
+                tried += 1
+                logger.warning("Gemini 429 RESOURCE_EXHAUSTED, switched to key #%d", _active_key_index)
                 continue
             logger.exception("Gemini vision analysis failed")
             result = {"song_name": None, "difficulty": None, "score": None}
