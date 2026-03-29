@@ -125,7 +125,7 @@ export default function QuestPage({ params }: Props) {
                               : "text-muted-foreground text-right"
                           }
                         >
-                          {sub.score !== null ? sub.score.toLocaleString() : "미제출"}
+                          {sub.score !== null ? sub.score.toLocaleString() : sub.photo_url ? "점수 미입력" : "미제출"}
                         </span>
                         <span>
                           {sub.photo_url ? (

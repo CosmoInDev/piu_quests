@@ -95,7 +95,7 @@ export default function SubmitModal({
               chart_id: item.chart_id,
               song_name: item.song_name,
               difficulty: item.difficulty,
-              score: item.score.toString(),
+              score: item.score?.toString() ?? "",
               error: null,
             }))
           );
@@ -194,7 +194,7 @@ export default function SubmitModal({
 
   // Validation
   const filledRows = rows.filter(
-    (r) => r.file_url && r.chart_id && r.song_name && r.difficulty && r.score
+    (r) => r.file_url && r.chart_id && r.song_name && r.difficulty
   );
   const anyAnalyzing = rows.some((r) => r.analyzing);
 
@@ -221,10 +221,12 @@ export default function SubmitModal({
       if (!/^[SD]\d{1,2}$/.test(diff))
         return `난이도 형식이 올바르지 않습니다: ${diff} (예: S19, D22)`;
 
-      const scoreNum = parseInt(r.score, 10);
-      if (!r.score || isNaN(scoreNum)) return "점수를 입력해주세요.";
-      if (scoreNum < 0 || scoreNum > 1000000)
-        return "점수는 0~1,000,000 범위여야 합니다.";
+      if (r.score) {
+        const scoreNum = parseInt(r.score, 10);
+        if (isNaN(scoreNum)) return "점수가 올바르지 않습니다.";
+        if (scoreNum < 0 || scoreNum > 1000000)
+          return "점수는 0~1,000,000 범위여야 합니다.";
+      }
     }
 
     // Check for duplicate (song_name, difficulty) pairs
@@ -258,7 +260,7 @@ export default function SubmitModal({
           chart_id: r.chart_id!,
           song_name: r.song_name,
           difficulty: r.difficulty,
-          score: parseInt(r.score, 10),
+          score: r.score ? parseInt(r.score, 10) : null,
           file_url: r.file_url!,
         }))
       );
@@ -382,7 +384,7 @@ export default function SubmitModal({
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground">
-                        점수
+                        점수(선택)
                       </label>
                       <Input
                         type="number"

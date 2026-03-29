@@ -77,7 +77,7 @@ async def get_quest_overview(
     records = records_result.scalars().all()
 
     # Build item lookup: (user_id, chart_id) -> (score, photo_url)
-    item_map: dict[tuple[int, int], tuple[int, str | None]] = {}
+    item_map: dict[tuple[int, int], tuple[int | None, str | None]] = {}
     for record in records:
         if record.user_id is None:
             continue

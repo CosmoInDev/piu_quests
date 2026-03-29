@@ -17,7 +17,7 @@ class RecordItemOut(BaseModel):
     chart_id: int
     song_name: str
     difficulty: str
-    score: int
+    score: int | None = None
     created_at: datetime
     photo: PhotoOut | None = None
 
@@ -47,7 +47,7 @@ class RecordItemSubmission(BaseModel):
     chart_id: int
     song_name: str
     difficulty: str
-    score: int
+    score: int | None = None
     file_url: str
 
 

@@ -43,7 +43,7 @@ export interface RecordItem {
   chart_id: number;
   song_name: string;
   difficulty: string;
-  score: number;
+  score: number | null;
   created_at: string;
   photo: Photo | null;
 }

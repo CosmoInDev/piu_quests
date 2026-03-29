@@ -36,7 +36,7 @@ export async function submitRecord(
     chart_id: number;
     song_name: string;
     difficulty: string;
-    score: number;
+    score: number | null;
     file_url: string;
   }[]
 ): Promise<Record> {

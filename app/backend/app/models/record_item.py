@@ -14,7 +14,7 @@ class RecordItem(Base):
     chart_id: Mapped[int] = mapped_column(ForeignKey("charts.id"), nullable=False)
     song_name: Mapped[str] = mapped_column(String(255), nullable=False)
     difficulty: Mapped[str] = mapped_column(String(20), nullable=False)
-    score: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    score: Mapped[int | None] = mapped_column(Integer, nullable=True, default=None)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     record: Mapped["Record"] = relationship("Record", back_populates="items")
