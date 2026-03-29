@@ -33,7 +33,7 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-MODELS = ["gemini-3-flash-preview", "gemini-2.0-flash"]
+MODELS = ["gemini-2.0-flash"]
 
 
 def _call_gemini(image_bytes: bytes, mime_type: str, api_key: str, model: str) -> dict:
@@ -71,9 +71,10 @@ async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     """Analyze a PIU game result photo and extract song_name, difficulty, score.
 
     Fallback chain on 429 RESOURCE_EXHAUSTED:
-      key1 + gemini-3-flash-preview → key1 + gemini-2.0-flash
-      → key2 + gemini-3-flash-preview → key2 + gemini-2.0-flash
+      key1 + gemini-2.0-flash → key2 + gemini-2.0-flash
     Returns dict with keys: song_name, difficulty, score (any may be None).
+    Each individual Gemini call is bounded by a 10-second timeout so the
+    caller is never blocked indefinitely.
     """
     keys = _get_api_keys()
     if not keys:
@@ -85,8 +86,11 @@ async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
             try:
                 key_hint = api_key[:4] + "…" + api_key[-4:]
                 logger.info("Trying Gemini model=%s key=%s", model, key_hint)
-                result = await asyncio.to_thread(
-                    _call_gemini, image_bytes, mime_type, api_key, model,
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(
+                        _call_gemini, image_bytes, mime_type, api_key, model,
+                    ),
+                    timeout=10.0,
                 )
                 logger.info("Gemini success with model=%s key=%s", model, key_hint)
                 return {
@@ -94,6 +98,12 @@ async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
                     "difficulty": result.get("difficulty"),
                     "score": result.get("score"),
                 }
+            except TimeoutError:
+                logger.warning(
+                    "Gemini timed out after 10s (model=%s), trying next fallback",
+                    model,
+                )
+                continue
             except genai.errors.ClientError as e:
                 if e.code == 429:
                     logger.warning(

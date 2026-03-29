@@ -1,6 +1,20 @@
 import api from "@/lib/api";
 import type { Record, PhotoAnalysisResult } from "@/types";
 
+export async function uploadPhoto(
+  questId: number,
+  file: File
+): Promise<{ file_url: string }> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await api.post<{ file_url: string }>(
+    `/photos/upload?quest_id=${questId}`,
+    formData,
+    { headers: { "Content-Type": "multipart/form-data" } }
+  );
+  return res.data;
+}
+
 export async function analyzePhoto(
   questId: number,
   file: File,

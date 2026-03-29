@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import axios from "axios";
-import { analyzePhoto, submitRecord, getMyRecord } from "@/hooks/useRecord";
+import { analyzePhoto, uploadPhoto, submitRecord, getMyRecord } from "@/hooks/useRecord";
 import type { PhotoAnalysisResult } from "@/types";
 
 interface Chart {
@@ -132,7 +132,7 @@ export default function SubmitModal({
     });
 
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+    const timeoutId = setTimeout(() => controller.abort(), 30_000);
 
     try {
       const result: PhotoAnalysisResult = await analyzePhoto(questId, file, controller.signal);
@@ -147,13 +147,18 @@ export default function SubmitModal({
       });
     } catch (err) {
       clearTimeout(timeoutId);
-      if (axios.isCancel(err)) {
-        // 15s timeout: clear spinner, leave fields blank for manual input
-        updateRow(rowId, { analyzing: false });
-      } else {
+      // Analyze failed — fallback to upload-only so file_url is preserved
+      try {
+        const { file_url } = await uploadPhoto(questId, file);
         updateRow(rowId, {
           analyzing: false,
+          file_url,
           error: "사진 분석에 실패했습니다. 정보를 직접 입력해주세요.",
+        });
+      } catch {
+        updateRow(rowId, {
+          analyzing: false,
+          error: "사진 업로드에 실패했습니다. 다시 시도해주세요.",
         });
       }
     }

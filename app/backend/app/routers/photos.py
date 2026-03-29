@@ -17,6 +17,32 @@ router = APIRouter(prefix="/photos", tags=["photos"])
 MAX_FILE_SIZE = 30 * 1024 * 1024  # 30MB
 
 
+@router.post("/upload")
+async def upload_photo(
+    quest_id: int,
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Upload-only endpoint: stores the photo and returns file_url without
+    running Gemini analysis.  Used as a fallback when /analyze times out."""
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="이미지 파일만 업로드할 수 있습니다.",
+        )
+    file_bytes = await file.read()
+    if len(file_bytes) > MAX_FILE_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="파일 크기가 30MB를 초과합니다.",
+        )
+    file_url = await upload_photo_bytes(
+        file_bytes, file.content_type, file.filename or "photo.jpg",
+        current_user.id, quest_id,
+    )
+    return {"file_url": file_url}
+
+
 @router.post("/analyze", response_model=PhotoAnalysisResult)
 async def analyze_photo(
     quest_id: int,
