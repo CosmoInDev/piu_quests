@@ -38,7 +38,16 @@ MODELS = ["gemini-3-flash-preview", "gemini-2.0-flash"]
 
 def _call_gemini(image_bytes: bytes, mime_type: str, api_key: str, model: str) -> dict:
     """Synchronous Gemini API call."""
-    client = genai.Client(api_key=api_key)
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(
+            # Disable SDK built-in retry on 429 so our own key/model
+            # fallback chain handles it without ~15s internal backoff.
+            retry_options=types.HttpRetryOptions(
+                attempts=1,
+            ),
+        ),
+    )
 
     response = client.models.generate_content(
         model=model,
@@ -74,10 +83,12 @@ async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     for api_key in keys:
         for model in MODELS:
             try:
+                key_hint = api_key[:4] + "…" + api_key[-4:]
+                logger.info("Trying Gemini model=%s key=%s", model, key_hint)
                 result = await asyncio.to_thread(
                     _call_gemini, image_bytes, mime_type, api_key, model,
                 )
-                logger.info("Gemini success with model=%s", model)
+                logger.info("Gemini success with model=%s key=%s", model, key_hint)
                 return {
                     "song_name": result.get("song_name"),
                     "difficulty": result.get("difficulty"),
