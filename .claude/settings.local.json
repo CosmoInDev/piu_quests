@@ -26,7 +26,9 @@
       "Bash(.venv/Scripts/python.exe:*)",
       "Bash(C:/Users/yongseok/AppData/Local/Programs/Python/Python311/python.exe:*)",
       "Bash(.venv/Scripts/pip.exe install:*)",
-      "Bash(where uv:*)"
+      "Bash(where uv:*)",
+      "Bash(npx tsc:*)",
+      "Bash(cd:*)"
     ]
   }
 }

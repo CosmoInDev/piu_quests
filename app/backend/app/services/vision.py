@@ -33,12 +33,15 @@ def _extract_json(text: str) -> dict:
     return json.loads(text)
 
 
-def _call_gemini(image_bytes: bytes, mime_type: str, api_key: str) -> dict:
+MODELS = ["gemini-3-flash-preview", "gemini-2.0-flash"]
+
+
+def _call_gemini(image_bytes: bytes, mime_type: str, api_key: str, model: str) -> dict:
     """Synchronous Gemini API call."""
     client = genai.Client(api_key=api_key)
 
     response = client.models.generate_content(
-        model="gemini-3-flash-preview",
+        model=model,
         contents=[
             types.Part.from_text(text=PROMPT),
             types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
@@ -55,44 +58,46 @@ def _get_api_keys() -> list[str]:
     return [k for k in keys if k]
 
 
-_active_key_index = 0
-
-
 async def analyze_game_photo(image_bytes: bytes, mime_type: str) -> dict:
     """Analyze a PIU game result photo and extract song_name, difficulty, score.
 
-    Switches active API key on 429 RESOURCE_EXHAUSTED so subsequent requests
-    go straight to the working key.
+    Fallback chain on 429 RESOURCE_EXHAUSTED:
+      key1 + gemini-3-flash-preview → key1 + gemini-2.0-flash
+      → key2 + gemini-3-flash-preview → key2 + gemini-2.0-flash
     Returns dict with keys: song_name, difficulty, score (any may be None).
     """
-    global _active_key_index
     keys = _get_api_keys()
     if not keys:
         logger.error("No Gemini API keys configured")
         return {"song_name": None, "difficulty": None, "score": None}
 
-    tried = 0
-    while tried < len(keys):
-        api_key = keys[_active_key_index % len(keys)]
-        try:
-            result = await asyncio.to_thread(_call_gemini, image_bytes, mime_type, api_key)
-            break
-        except genai.errors.ClientError as e:
-            if e.code == 429:
-                _active_key_index = (_active_key_index + 1) % len(keys)
-                tried += 1
-                logger.warning("Gemini 429 RESOURCE_EXHAUSTED, switched to key #%d", _active_key_index)
-                continue
-            logger.exception("Gemini vision analysis failed")
-            result = {"song_name": None, "difficulty": None, "score": None}
-            break
-        except Exception:
-            logger.exception("Gemini vision analysis failed")
-            result = {"song_name": None, "difficulty": None, "score": None}
-            break
-    else:
-        logger.error("All Gemini API keys exhausted (429)")
-        result = {"song_name": None, "difficulty": None, "score": None}
+    for api_key in keys:
+        for model in MODELS:
+            try:
+                result = await asyncio.to_thread(
+                    _call_gemini, image_bytes, mime_type, api_key, model,
+                )
+                logger.info("Gemini success with model=%s", model)
+                return {
+                    "song_name": result.get("song_name"),
+                    "difficulty": result.get("difficulty"),
+                    "score": result.get("score"),
+                }
+            except genai.errors.ClientError as e:
+                if e.code == 429:
+                    logger.warning(
+                        "Gemini 429 RESOURCE_EXHAUSTED (model=%s), trying next fallback",
+                        model,
+                    )
+                    continue
+                logger.exception("Gemini vision analysis failed")
+                return {"song_name": None, "difficulty": None, "score": None}
+            except Exception:
+                logger.exception("Gemini vision analysis failed")
+                return {"song_name": None, "difficulty": None, "score": None}
+
+    logger.error("All Gemini API keys and models exhausted (429)")
+    result = {"song_name": None, "difficulty": None, "score": None}
 
     # Normalize: ensure all expected keys exist
     return {
