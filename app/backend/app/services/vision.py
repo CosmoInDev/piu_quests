@@ -38,7 +38,7 @@ def _call_gemini(image_bytes: bytes, mime_type: str) -> dict:
     client = genai.Client(api_key=settings.gemini_api_key)
 
     response = client.models.generate_content(
-        model="gemini-3-flash-latest",
+        model="gemini-3-flash-preview",
         contents=[
             types.Part.from_text(text=PROMPT),
             types.Part.from_bytes(data=image_bytes, mime_type=mime_type),
