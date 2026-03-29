@@ -336,7 +336,7 @@ export default function SubmitModal({
                 </div>
 
                 {/* Fields */}
-                {(row.file_url || row.analyzing) && (
+                {(row.preview || row.file_url || row.analyzing) && (
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div>
                       <label className="text-xs text-muted-foreground">곡</label>
