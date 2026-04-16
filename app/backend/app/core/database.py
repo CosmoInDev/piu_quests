@@ -29,7 +29,12 @@ def _force_ipv4(database_url: str) -> str:
         return database_url
 
 
-engine = create_async_engine(_force_ipv4(settings.database_url), echo=False)
+engine = create_async_engine(
+    _force_ipv4(settings.database_url),
+    echo=False,
+    pool_pre_ping=True,
+    pool_recycle=300,
+)
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)
 
 
