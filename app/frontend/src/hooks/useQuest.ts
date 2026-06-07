@@ -1,17 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import api from "@/lib/api";
+import { useEffect, useState } from "react";
+import { apiGet, apiPost } from "@/lib/api";
 
-interface Chart {
-  id: number;
-  quest_id: number;
+export interface Chart {
   song_name: string;
   difficulty: string;
   order: number;
 }
 
-interface Quest {
+export interface Quest {
   id: number;
   title: string;
   start_date: string;
@@ -20,100 +18,38 @@ interface Quest {
   charts: Chart[];
 }
 
+// KST 기준 오늘 'YYYY-MM-DD'.
+function todayKST(): string {
+  return new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
+}
+
 export function useOngoingQuest() {
   const [quest, setQuest] = useState<Quest | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
 
   useEffect(() => {
-    api
-      .get("/quests/ongoing")
-      .then((res) => {
-        if (res.data === null) {
-          setNotFound(true);
-        } else {
-          setQuest(res.data);
-        }
+    apiGet<Quest | null>("/quests/ongoing")
+      .then((data) => {
+        if (data) setQuest(data);
+        else setNotFound(true);
       })
-      .catch(() => {
-        // Unexpected error — treat as not found
-        setNotFound(true);
-      })
+      .catch(() => setNotFound(true))
       .finally(() => setLoading(false));
   }, []);
 
   return { quest, loading, notFound };
 }
 
-export interface ChartSubmission {
-  user_id: number;
-  user_name: string;
-  score: number | null;
-  photo_url: string | null;
-}
-
-export interface ChartOverview {
-  chart_id: number;
-  song_name: string;
-  difficulty: string;
-  order: number;
-  submissions: ChartSubmission[];
-}
-
-export interface UserSummary {
-  user_id: number;
-  user_name: string;
-  submitted: number;
-  total: number;
-}
-
-export interface QuestOverview {
-  quest: Quest;
-  chart_overviews: ChartOverview[];
-  user_summaries: UserSummary[];
-}
-
-export function useQuestOverview(questId: number | null) {
-  const [overview, setOverview] = useState<QuestOverview | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [trigger, setTrigger] = useState(0);
-
-  const refetch = useCallback(() => setTrigger((t) => t + 1), []);
-
-  useEffect(() => {
-    if (questId === null) {
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    api
-      .get(`/quests/${questId}/overview`)
-      .then((res) => setOverview(res.data))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [questId, trigger]);
-
-  return { overview, loading, refetch };
-}
-
-export interface QuestBasic {
-  id: number;
-  title: string;
-  start_date: string;
-  end_date: string;
-  created_at: string;
-}
-
 export function usePastQuests() {
-  const [quests, setQuests] = useState<QuestBasic[]>([]);
+  const [quests, setQuests] = useState<Quest[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api
-      .get("/quests")
-      .then((res) => {
-        const today = new Date().toLocaleDateString("sv-SE", { timeZone: "Asia/Seoul" });
-        setQuests((res.data as QuestBasic[]).filter((q) => q.end_date < today));
+    apiGet<Quest[]>("/quests")
+      .then((data) => {
+        const today = todayKST();
+        setQuests(data.filter((q) => q.end_date < today));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -122,19 +58,36 @@ export function usePastQuests() {
   return { quests, loading };
 }
 
+export function useQuest(id: number | null) {
+  const [quest, setQuest] = useState<Quest | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+
+  useEffect(() => {
+    if (id === null) {
+      setLoading(false);
+      return;
+    }
+    apiGet<Quest>(`/quests/${id}`)
+      .then(setQuest)
+      .catch(() => setNotFound(true))
+      .finally(() => setLoading(false));
+  }, [id]);
+
+  return { quest, loading, notFound };
+}
+
 export async function createQuest(data: {
   start_date: string;
   end_date: string;
-  charts: { song_name: string; difficulty: string; order: number }[];
-}) {
-  const res = await api.post("/quests", data);
-  return res.data as Quest;
+  charts: Chart[];
+}): Promise<Quest> {
+  return apiPost<Quest>("/quests", data);
 }
 
 export async function pickChart(
   level: number,
   mode?: "single" | "double"
 ): Promise<{ song_name: string; difficulty: string }> {
-  const res = await api.post("/quests/pick", { level, mode });
-  return res.data;
+  return apiPost<{ song_name: string; difficulty: string }>("/pick", { level, mode });
 }

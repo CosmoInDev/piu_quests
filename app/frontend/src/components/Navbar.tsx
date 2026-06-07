@@ -1,10 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { signOut, useSession } from "next-auth/react";
-import { Menu, LogOut, LogIn, Home, Settings } from "lucide-react";
+import { Menu, Home } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Sheet,
@@ -13,15 +11,11 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
-import { LoginModal } from "@/components/LoginModal";
-import { RegisterModal } from "@/components/RegisterModal";
-import { useCurrentUser } from "@/hooks/useUser";
 
 const NAV_LINKS = [
   { href: "/", label: "홈", icon: Home },
   { href: "/quests/ongoing", label: "오늘의 숙제", icon: null },
   { href: "/quests/past", label: "지난번 숙제", icon: null },
-  { href: "/picks", label: "추첨 테스트", icon: null },
 ];
 
 function NavLinks({ onClick }: { onClick?: () => void }) {
@@ -46,80 +40,11 @@ function NavLinks({ onClick }: { onClick?: () => void }) {
   );
 }
 
-function AuthButton({ mobile = false, iconOnly = false }: { mobile?: boolean; iconOnly?: boolean }) {
-  const { data: session, status } = useSession();
-  const [loginOpen, setLoginOpen] = useState(false);
-  const isAuthenticated = status === "authenticated" && !!session;
-  const { user, checked, refetch } = useCurrentUser(isAuthenticated);
-
-  if (status === "loading") return null;
-
-  // Not logged in: show login button
-  if (!session) {
-    return (
-      <>
-        <Button
-          size="sm"
-          onClick={() => setLoginOpen(true)}
-          className="font-medium"
-        >
-          <LogIn className="w-4 h-4" />
-          {!iconOnly && <span className="ml-1">로그인</span>}
-        </Button>
-        <LoginModal open={loginOpen} onOpenChange={setLoginOpen} />
-      </>
-    );
-  }
-
-  // OAuth done but backend user not yet checked
-  if (!checked) return null;
-
-  // OAuth done, no backend user → show registration modal
-  if (!user) {
-    return (
-      <RegisterModal
-        open={true}
-        defaultName={session.user?.name || ""}
-        onRegistered={refetch}
-      />
-    );
-  }
-
-  // Fully logged in
-  if (iconOnly) {
-    return (
-      <Button size="sm" variant="ghost" onClick={() => signOut()} className="font-medium px-2">
-        <LogOut className="w-4 h-4" />
-      </Button>
-    );
-  }
-
-  return (
-    <div className={`flex items-center gap-2 ${mobile ? "flex-col items-start" : ""}`}>
-      <Link
-        href="/settings"
-        className="flex items-center gap-1 text-sm text-muted-foreground hover:text-primary transition-colors"
-      >
-        <span className="truncate max-w-[160px]">{user.name}</span>
-        <Settings className="w-4 h-4" />
-      </Link>
-      <Button
-        size="sm"
-        onClick={() => signOut()}
-        className="font-medium"
-      >
-        <LogOut className="w-4 h-4 mr-1" />
-        로그아웃
-      </Button>
-    </div>
-  );
-}
-
 export function Navbar() {
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto px-4 h-14 flex items-center gap-3">
-        {/* Mobile: hamburger on the left */}
+        {/* 모바일: 왼쪽 햄버거 → 왼쪽에서 사이드바 슬라이드 */}
         <div className="md:hidden">
           <Sheet>
             <SheetTrigger asChild>
@@ -134,30 +59,19 @@ export function Navbar() {
               <div className="mt-6 flex flex-col gap-1">
                 <NavLinks />
               </div>
-              <div className="mt-6 border-t pt-4 px-3">
-                <AuthButton mobile />
-              </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        {/* Logo */}
+        {/* 로고 */}
         <Link href="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
           망겜기록제출소
         </Link>
 
-        {/* PC: center nav + right auth */}
+        {/* PC: 가로 내비게이션 */}
         <nav className="hidden md:flex items-center gap-1 mx-6 flex-1">
           <NavLinks />
         </nav>
-        <div className="hidden md:flex items-center ml-auto">
-          <AuthButton />
-        </div>
-
-        {/* Mobile: compact auth button always visible on the right */}
-        <div className="md:hidden ml-auto">
-          <AuthButton iconOnly />
-        </div>
       </div>
     </header>
   );

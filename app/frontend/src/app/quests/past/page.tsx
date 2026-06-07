@@ -19,7 +19,7 @@ export default function PastQuestsPage() {
           {quests.map((quest) => (
             <Link
               key={quest.id}
-              href={`/quests/${quest.id}`}
+              href={`/quests/detail?id=${quest.id}`}
               className="flex flex-col rounded-lg border p-4 hover:bg-accent/50 transition-colors"
             >
               <span className="text-base font-semibold">{quest.title}</span>

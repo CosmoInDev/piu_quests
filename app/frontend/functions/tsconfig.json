@@ -1,0 +1,11 @@
+{
+  "comment": "Pages Functions 전용 tsconfig. Worker 런타임 전역(D1Database, PagesFunction 등)을 쓰며 Next의 DOM 타입과 분리한다. functions-shared도 포함.",
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["@cloudflare/workers-types"],
+    "lib": ["ESNext"],
+    "moduleResolution": "bundler"
+  },
+  "include": ["**/*.ts", "../functions-shared/**/*.ts"],
+  "exclude": ["node_modules"]
+}

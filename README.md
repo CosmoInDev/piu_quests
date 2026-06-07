@@ -1,47 +1,43 @@
 # PIU Quests
 
-펌프 잇 업(Pump It Up) 리듬게임 기록을 친구들과 함께 추적하는 서비스입니다.
+펌프 잇 업(Pump It Up) 리듬게임 **숙제(지정곡) 보드**입니다.
 
-퀘스트 보드에서 진행 중인 퀘스트를 확인하고, 각 차트에 맞는 게임 결과 사진을 업로드해 기록을 남길 수 있습니다.
+현재 숙제와 지난 숙제를 조회하고, 진행 중인 숙제가 없을 때 **누구나 선착순으로** 다음 숙제를 등록할 수 있습니다. 로그인·기록 제출·사진 업로드 기능은 없습니다.
 
 ```
 piu_quests/
-├── app/
-│   ├── frontend/   # Next.js 16 (App Router) + Tailwind v4 + shadcn/ui
-│   └── backend/    # FastAPI + SQLAlchemy 2.0 (async)
-└── specs/          # 프로젝트 기획 문서
+└── app/frontend/        # Next.js 16 정적 사이트 + Cloudflare Pages Functions + D1
+    ├── src/             # Next.js 앱 (App Router, 전부 클라이언트 컴포넌트)
+    ├── functions/       # Pages Functions (/api/*) — 작은 API
+    ├── functions-shared/ # functions 공유 헬퍼 (라우트 아님)
+    ├── schema.sql       # D1(SQLite) 스키마
+    └── wrangler.toml    # Cloudflare Pages + D1 설정
 ```
+
+## 아키텍처
+
+직접 관리하는 서버가 없는 구조입니다. Cloudflare 한 곳에서 정적 호스팅 + 작은 API + DB를 모두 제공하며, 사용량이 없어도 일시정지되지 않습니다.
+
+| 구성 | 기술 |
+|---|---|
+| 프론트 | Next.js 16 (`output: 'export'` 정적 빌드) + Tailwind v4 + shadcn/ui |
+| API | Cloudflare Pages Functions (`functions/api/*`) — 프론트와 같은 출처 |
+| DB | Cloudflare D1 (SQLite), 테이블 1개(`quests`, charts는 JSON 컬럼) |
+| 호스팅/배포 | Cloudflare Pages |
+
+### API
+
+| 메서드 | 경로 | 설명 |
+|---|---|---|
+| GET | `/api/quests` | 전체 숙제 목록 |
+| GET | `/api/quests/ongoing` | 오늘 진행 중인 숙제 (없으면 `null`) |
+| GET | `/api/quests/:id` | 숙제 단건 |
+| POST | `/api/quests` | 숙제 등록. 겹치는 숙제가 없을 때만 원자적으로 생성(선착순), 있으면 409 |
+| POST | `/api/pick` | piurise.com 곡 추첨 프록시 |
 
 ---
 
-## 로컬 실행 방법
-
-백엔드와 프론트엔드를 **각각 별도의 터미널**에서 실행합니다.
-
-### 백엔드 (FastAPI)
-
-```bash
-cd app/backend
-
-# 1. 의존성 설치
-pip install uv
-uv sync --extra dev
-
-# 2. 환경변수 설정
-cp .env.example .env
-# .env 파일을 열어 값 입력 (아래 TODO 참고)
-
-# 3. DB 마이그레이션
-alembic upgrade head
-
-# 4. 서버 실행
-uvicorn app.main:app --reload
-```
-
-- API 서버: http://localhost:8000
-- Swagger UI: http://localhost:8000/docs
-
-### 프론트엔드 (Next.js)
+## 로컬 실행
 
 ```bash
 cd app/frontend
@@ -49,87 +45,32 @@ cd app/frontend
 # 1. 의존성 설치
 npm install
 
-# 2. 환경변수 설정
-cp .env.local.example .env.local
-# .env.local 파일을 열어 값 입력 (아래 TODO 참고)
+# 2. 로컬 D1에 스키마 적용 (최초 1회)
+npm run db:init:local
 
-# 3. 개발 서버 실행
-npm run dev
+# 3. 정적 빌드 + Pages Functions + 로컬 D1로 실행
+npm run preview
 ```
 
-- 앱: http://localhost:3000
+- `npm run preview` 는 `next build`(정적 export) 후 `wrangler pages dev out` 으로 실행해 프론트와 `/api/*` 함수를 같은 출처에서 띄웁니다.
+- 순수 프론트만 빠르게 보려면 `npm run dev` (단, 이때는 `/api/*` 가 없어 데이터가 안 뜸).
 
 ---
 
-## TODO — 실제 서비스 실행 전 완료해야 할 작업
+## 배포 (Cloudflare Pages)
 
-### 1. Supabase 프로젝트 생성
+```bash
+cd app/frontend
 
-- [ ] [Supabase](https://supabase.com)에서 새 프로젝트 생성
-- [ ] **Settings → Database** 에서 연결 문자열 확인 후 백엔드 `.env`에 입력
-  ```
-  DATABASE_URL=postgresql+asyncpg://postgres:[password]@db.[ref].supabase.co:5432/postgres
-  ```
-- [ ] **Settings → API** 에서 `SUPABASE_URL`, `service_role` 키 확인 후 `.env`에 입력
-  ```
-  SUPABASE_URL=https://[ref].supabase.co
-  SUPABASE_SERVICE_KEY=...
-  ```
+# 1. D1 데이터베이스 생성 (최초 1회) — 출력된 database_id를 wrangler.toml에 입력
+npx wrangler d1 create piu-quests
 
-### 2. Supabase Storage 버킷 생성
+# 2. 원격 D1에 스키마 적용 (최초 1회)
+npm run db:init
 
-- [ ] Supabase 대시보드 → **Storage** → 새 버킷 생성
-- [ ] 버킷 이름: `photos`
-- [ ] 버킷 공개 여부: **Public** (사진 URL로 직접 접근 가능하도록)
+# 3. 배포
+npm run deploy
+```
 
-### 3. Google OAuth 앱 생성
-
-- [ ] [Google Cloud Console](https://console.cloud.google.com/) → 새 프로젝트 생성
-- [ ] **API 및 서비스 → OAuth 동의 화면** 설정
-- [ ] **API 및 서비스 → 사용자 인증 정보 → OAuth 2.0 클라이언트 ID** 생성
-  - 애플리케이션 유형: **웹 애플리케이션**
-  - 승인된 리디렉션 URI: `http://localhost:3000/api/auth/callback/google`
-- [ ] 발급된 클라이언트 ID / 시크릿을 각 환경변수 파일에 입력
-  - 프론트엔드 `.env.local`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
-  - 백엔드 `.env`: `GOOGLE_CLIENT_ID`
-
-### 4. 환경변수 입력
-
-- [ ] `app/backend/.env` 작성 (`.env.example` 참고)
-- [ ] `app/frontend/.env.local` 작성 (`.env.local.example` 참고)
-- [ ] `NEXTAUTH_SECRET` 생성 후 입력
-  ```bash
-  openssl rand -base64 32
-  ```
-
-### 5. DB 마이그레이션 실행
-
-- [ ] Supabase DB 연결 확인 후 최초 마이그레이션 생성 및 적용
-  ```bash
-  cd app/backend
-  alembic revision --autogenerate -m "initial"
-  alembic upgrade head
-  ```
-
----
-
-## 환경변수 요약
-
-### 백엔드 (`app/backend/.env`)
-
-| 변수명 | 설명 |
-|---|---|
-| `DATABASE_URL` | Supabase PostgreSQL 연결 문자열 (`postgresql+asyncpg://...`) |
-| `SUPABASE_URL` | Supabase 프로젝트 URL |
-| `SUPABASE_SERVICE_KEY` | Supabase `service_role` 키 (Storage 업로드용) |
-| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID (JWT 검증용) |
-
-### 프론트엔드 (`app/frontend/.env.local`)
-
-| 변수명 | 설명 |
-|---|---|
-| `NEXTAUTH_URL` | 앱 URL (로컬: `http://localhost:3000`) |
-| `NEXTAUTH_SECRET` | NextAuth 서명 비밀키 |
-| `GOOGLE_CLIENT_ID` | Google OAuth 클라이언트 ID |
-| `GOOGLE_CLIENT_SECRET` | Google OAuth 클라이언트 시크릿 |
-| `NEXT_PUBLIC_API_URL` | 백엔드 API URL (로컬: `http://localhost:8000`) |
+- Cloudflare 대시보드에서 Pages 프로젝트를 만들 경우: **빌드 명령** `npm run build`, **출력 디렉터리** `out`, 그리고 Settings → Functions → D1 바인딩에서 `DB` → `piu-quests` 연결.
+- `wrangler.toml` 의 `database_id` 는 `wrangler d1 create` 출력값으로 채워야 합니다.
