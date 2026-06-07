@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { RefreshCw } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -10,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/DatePicker";
 import { DIFFICULTY_SLOTS } from "@/lib/constants";
 import { createQuest, pickChart } from "@/hooks/useQuest";
+import { ApiError } from "@/lib/api";
 
 interface ChartEntry {
   song_name: string;
@@ -21,7 +21,6 @@ const emptyCharts = (): ChartEntry[] =>
 
 export default function CreateQuestPage() {
   const router = useRouter();
-  const { data: session, status } = useSession();
 
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -30,19 +29,6 @@ export default function CreateQuestPage() {
   const [picking, setPicking] = useState(false);
   const [pickingIndex, setPickingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Redirect unauthenticated users
-  if (status === "loading") {
-    return (
-      <div className="flex items-center justify-center py-24">
-        <p className="text-muted-foreground">불러오는 중...</p>
-      </div>
-    );
-  }
-  if (!session) {
-    router.replace("/");
-    return null;
-  }
 
   const updateChart = (index: number, updates: Partial<ChartEntry>) => {
     setCharts((prev) =>
@@ -123,13 +109,9 @@ export default function CreateQuestPage() {
       });
       router.push("/quests/ongoing");
     } catch (err: unknown) {
-      if (
-        typeof err === "object" &&
-        err !== null &&
-        "response" in err &&
-        (err as { response: { status: number } }).response?.status === 409
-      ) {
-        setError("해당 기간에 이미 숙제가 존재합니다.");
+      if (err instanceof ApiError) {
+        // 선착순 충돌(409) 등 서버가 내려준 메시지를 그대로 노출
+        setError(err.message);
       } else {
         setError("숙제 등록에 실패했습니다. 다시 시도해주세요.");
       }
@@ -142,7 +124,7 @@ export default function CreateQuestPage() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-primary mb-6">숙제 만들기</h1>
 
-      {/* Date chooser */}
+      {/* 기간 선택 */}
       <div className="flex items-center gap-3 mb-6 flex-wrap">
         <DatePicker
           value={startDate}

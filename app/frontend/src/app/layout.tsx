@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Providers } from "@/components/providers";
 import { Navbar } from "@/components/Navbar";
 import "./globals.css";
 
@@ -16,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "망겜기록제출소",
-  description: "친구들과 함께하는 펌프 잇 업 기록 제출 서비스",
+  description: "친구들과 함께하는 펌프 잇 업 숙제 보드",
 };
 
 export default function RootLayout({
@@ -30,12 +29,10 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
         suppressHydrationWarning
       >
-        <Providers>
-          <Navbar />
-          <main className="container mx-auto px-4 py-8">
-            {children}
-          </main>
-        </Providers>
+        <Navbar />
+        <main className="container mx-auto px-4 py-8">
+          {children}
+        </main>
       </body>
     </html>
   );
