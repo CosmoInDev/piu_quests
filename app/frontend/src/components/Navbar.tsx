@@ -55,7 +55,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="left" className="w-64">
               <SheetHeader>
-                <SheetTitle className="text-primary text-left">망겜숙제추출소</SheetTitle>
+                <SheetTitle className="text-primary text-left">망겜숙제추첨소</SheetTitle>
               </SheetHeader>
               <div className="mt-6 flex flex-col gap-1">
                 <NavLinks />
@@ -66,7 +66,7 @@ export function Navbar() {
 
         {/* 로고 */}
         <Link href="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
-          망겜숙제추출소
+          망겜숙제추첨소
         </Link>
 
         {/* PC: 가로 내비게이션 */}
