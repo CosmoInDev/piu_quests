@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "망겜기록제출소",
+  title: "망겜숙제추출소",
   description: "친구들과 함께하는 펌프 잇 업 숙제 보드",
 };
 

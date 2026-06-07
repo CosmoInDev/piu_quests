@@ -16,6 +16,7 @@ const NAV_LINKS = [
   { href: "/", label: "홈", icon: Home },
   { href: "/quests/ongoing", label: "오늘의 숙제", icon: null },
   { href: "/quests/past", label: "지난번 숙제", icon: null },
+  { href: "/picks", label: "추첨 테스트", icon: null },
 ];
 
 function NavLinks({ onClick }: { onClick?: () => void }) {
@@ -54,7 +55,7 @@ export function Navbar() {
             </SheetTrigger>
             <SheetContent side="left" className="w-64">
               <SheetHeader>
-                <SheetTitle className="text-primary text-left">망겜기록제출소</SheetTitle>
+                <SheetTitle className="text-primary text-left">망겜숙제추출소</SheetTitle>
               </SheetHeader>
               <div className="mt-6 flex flex-col gap-1">
                 <NavLinks />
@@ -65,7 +66,7 @@ export function Navbar() {
 
         {/* 로고 */}
         <Link href="/" className="flex items-center gap-2 font-bold text-primary text-lg shrink-0">
-          망겜기록제출소
+          망겜숙제추출소
         </Link>
 
         {/* PC: 가로 내비게이션 */}
