@@ -14,9 +14,13 @@ App title: **망겜기록제출소**
 | Frontend  | Next.js 16 (App Router, `output: 'export'`) + TypeScript + Tailwind v4 + shadcn/ui |
 | API       | Cloudflare Pages Functions (`functions/api/*`), 프론트와 same-origin |
 | Database  | Cloudflare D1 (SQLite) — 테이블 1개(`quests`, charts는 JSON 컬럼) |
-| Deploy    | Cloudflare Pages                                          |
+| Deploy    | Cloudflare Pages — `main` push 시 GitHub Actions 자동 배포    |
 
 직접 관리하는 백엔드 서버·인증이 없다. 공유 쓰기(선착순 등록)는 D1 + Pages Functions로 처리한다.
+
+- 운영 URL: **https://piu-quests.pages.dev** (Pages 프로젝트명 `piu-quests`)
+- 자동 배포: `.github/workflows/deploy.yml` (Secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`)
+- 수동 배포: `cd app/frontend && npm run deploy`
 
 ## Key Paths
 

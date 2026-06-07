@@ -59,18 +59,31 @@ npm run preview
 
 ## 배포 (Cloudflare Pages)
 
+운영 사이트: **https://piu-quests.pages.dev**
+
+### 자동 배포 (기본)
+
+`main` 브랜치에 push되면 GitHub Actions(`.github/workflows/deploy.yml`)가 빌드·배포한다. 별도 명령 불필요.
+
+필요한 **GitHub Secrets** (Settings → Secrets and variables → Actions):
+
+| 이름 | 값 |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API 토큰 (My Profile → API Tokens). 권한: Account → **Cloudflare Pages: Edit**, Account → **D1: Edit** |
+| `CLOUDFLARE_ACCOUNT_ID` | Cloudflare 계정 ID |
+
+### 수동 배포 / 최초 1회 셋업
+
 ```bash
 cd app/frontend
 
-# 1. D1 데이터베이스 생성 (최초 1회) — 출력된 database_id를 wrangler.toml에 입력
+# (최초 1회) D1 생성 — 출력된 database_id를 wrangler.toml에 입력
 npx wrangler d1 create piu-quests
-
-# 2. 원격 D1에 스키마 적용 (최초 1회)
+# (최초 1회) 원격 D1에 스키마 적용
 npm run db:init
 
-# 3. 배포
+# 수동 배포가 필요할 때
 npm run deploy
 ```
 
-- Cloudflare 대시보드에서 Pages 프로젝트를 만들 경우: **빌드 명령** `npm run build`, **출력 디렉터리** `out`, 그리고 Settings → Functions → D1 바인딩에서 `DB` → `piu-quests` 연결.
-- `wrangler.toml` 의 `database_id` 는 `wrangler d1 create` 출력값으로 채워야 합니다.
+- `wrangler.toml` 의 `database_id` 는 `wrangler d1 create` 출력값으로 채워야 한다 (이미 설정됨).
