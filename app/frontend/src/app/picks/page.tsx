@@ -67,7 +67,11 @@ export default function SamplePickPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-primary mb-6">추첨 테스트</h1>
+      <h1 className="text-2xl font-bold text-primary mb-2">추첨 테스트</h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        추첨을 너무 자주 돌리면 WINDFORCE 선생님의 서버가 튕겨내서 실패할 수
+        있습니다. 살살 돌려 주세요!
+      </p>
 
       <Button
         onClick={handlePickAll}
