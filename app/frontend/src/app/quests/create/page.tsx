@@ -40,7 +40,7 @@ export default function CreateQuestPage() {
     const slot = DIFFICULTY_SLOTS[index];
     setPickingIndex(index);
     try {
-      const result = await pickChart(slot.level, slot.mode);
+      const result = await pickChart(slot.level);
       updateChart(index, {
         song_name: result.song_name,
         difficulty: result.difficulty,
@@ -57,7 +57,7 @@ export default function CreateQuestPage() {
     setError(null);
     try {
       const results = await Promise.all(
-        DIFFICULTY_SLOTS.map((slot) => pickChart(slot.level, slot.mode))
+        DIFFICULTY_SLOTS.map((slot) => pickChart(slot.level))
       );
       setCharts(
         results.map((r) => ({

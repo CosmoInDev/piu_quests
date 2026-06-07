@@ -86,8 +86,7 @@ export async function createQuest(data: {
 }
 
 export async function pickChart(
-  level: number,
-  mode?: "single" | "double"
+  level: number
 ): Promise<{ song_name: string; difficulty: string }> {
-  return apiPost<{ song_name: string; difficulty: string }>("/pick", { level, mode });
+  return apiPost<{ song_name: string; difficulty: string }>("/pick", { level });
 }

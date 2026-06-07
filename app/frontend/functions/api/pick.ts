@@ -1,14 +1,40 @@
 /// <reference types="@cloudflare/workers-types" />
 import { json } from "../../functions-shared/db";
 
-const PIURISE_SONG_SELECT_URL = "https://piurise.com/api/arcade/song-select";
+const PIURANK_DRAW_URL = "https://piurank.com/playinfo/draw_result";
 
 interface PickBody {
   level?: number;
-  mode?: "single" | "double";
 }
 
-// POST /api/pick — piurise.com 곡 추첨 프록시 (CORS·키 노출 회피).
+// 레벨별 추첨 조건(piurank 규칙).
+// - 19: Single / Arcade, Short
+// - 20~25: Single & Double / 전체 타입
+// - 26: Double / 전체 타입
+function drawCondition(level: number): { modes: string[]; types: string[] } {
+  const allTypes = ["Arcade", "Remix", "Full", "Short"];
+  if (level <= 19) return { modes: ["Single"], types: ["Arcade", "Short"] };
+  if (level >= 26) return { modes: ["Double"], types: allTypes };
+  return { modes: ["Single", "Double"], types: allTypes };
+}
+
+// piurank 결과 HTML에서 곡명·난이도 추출.
+// 곡 셀 패턴: "{작곡가} - {곡명} {S|D}{level}"
+//   예) "도인 - 솔브 마이 허트 - SHORT CUT - S20"
+//       → song_name = "솔브 마이 허트 - SHORT CUT -", difficulty = "S20"
+// 첫 " - " 까지는 작곡가, 끝의 "{S|D}{level}" 는 난이도, 그 사이가 곡명.
+function parseResult(
+  html: string
+): { song_name: string; difficulty: string } | null {
+  const cell = html.match(/text-dark">([^<]+)<\/div>/);
+  if (!cell) return null;
+  const text = cell[1].trim();
+  const m = text.match(/^.+? - (.+) +([SD]\d+)$/);
+  if (!m) return null;
+  return { song_name: m[1].trim(), difficulty: m[2] };
+}
+
+// POST /api/pick — piurank.com 곡 추첨 프록시 (CORS 회피).
 export const onRequestPost: PagesFunction = async ({ request }) => {
   let body: PickBody;
   try {
@@ -21,23 +47,17 @@ export const onRequestPost: PagesFunction = async ({ request }) => {
     return json({ detail: "레벨을 입력해주세요." }, 400);
   }
 
-  const requestBody: Record<string, unknown> = {
-    minLevel: body.level,
-    maxLevel: body.level,
-    pickCount: 1,
-    excludeSongIds: [],
-  };
-  if (body.mode) {
-    requestBody.mode = body.mode;
-  }
+  const { modes, types } = drawCondition(body.level);
+  const url = new URL(PIURANK_DRAW_URL);
+  url.searchParams.set("min", String(body.level));
+  url.searchParams.set("max", String(body.level));
+  for (const mode of modes) url.searchParams.append("mode[]", mode);
+  for (const type of types) url.searchParams.append("type[]", type);
+  url.searchParams.set("count", "1");
 
   let resp: Response;
   try {
-    resp = await fetch(PIURISE_SONG_SELECT_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
-    });
+    resp = await fetch(url.toString());
   } catch {
     return json({ detail: "추첨 서버에 연결하지 못했습니다." }, 502);
   }
@@ -46,18 +66,10 @@ export const onRequestPost: PagesFunction = async ({ request }) => {
     return json({ detail: "추첨에 실패했습니다." }, 502);
   }
 
-  const data = (await resp.json()) as { songs?: Array<Record<string, unknown>> };
-  const songs = data.songs ?? [];
-  if (songs.length === 0) {
+  const result = parseResult(await resp.text());
+  if (!result) {
     return json({ detail: "조건에 맞는 곡이 없습니다." }, 502);
   }
 
-  const song = songs[0];
-  const songName = song.songTitle as string;
-  // difficultyBgUrl 의 접미사로 Single/Double 구분.
-  const bgUrl = (song.difficultyBgUrl as string) ?? "";
-  const modeLetter = bgUrl.endsWith("d_bg.png") ? "D" : "S";
-  const difficulty = `${modeLetter}${song.stepLevel}`;
-
-  return json({ song_name: songName, difficulty });
+  return json(result);
 };
