@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RefreshCw } from "lucide-react";
 
@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/DatePicker";
 import { DIFFICULTY_SLOTS } from "@/lib/constants";
-import { createQuest, pickChart } from "@/hooks/useQuest";
-import { ApiError } from "@/lib/api";
+import { createQuest, pickChart, type Quest } from "@/hooks/useQuest";
+import { apiGet, ApiError } from "@/lib/api";
 
 interface ChartEntry {
   song_name: string;
@@ -18,6 +18,42 @@ interface ChartEntry {
 
 const emptyCharts = (): ChartEntry[] =>
   DIFFICULTY_SLOTS.map(() => ({ song_name: "", difficulty: "" }));
+
+// 슬롯/재시도 사이 텀(ms). 동시에 여러 요청을 보내면 piurank가 403을 내므로 간격을 둔다.
+const SLOT_GAP_MS = 500;
+// 추첨 실패·중복 시 한 슬롯당 최대 시도 횟수.
+const MAX_ATTEMPTS = 5;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// 추첨 요청이 실패하거나, 최근 숙제와 (레벨, 곡)이 중복되면 재추첨한다.
+// 최대 MAX_ATTEMPTS 회 시도하며,
+//  - 끝까지 요청이 실패하면 throw 하여 기존처럼 에러로 처리하고,
+//  - 성공은 했지만 계속 중복만 나오면 마지막 결과를 그대로 채택한다.
+async function pickUnique(
+  level: number,
+  usedKeys: Set<string>
+): Promise<{ song_name: string; difficulty: string }> {
+  let lastResult: { song_name: string; difficulty: string } | null = null;
+  let lastError: unknown = null;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    if (attempt > 0) await sleep(SLOT_GAP_MS);
+    try {
+      const result = await pickChart(level);
+      lastResult = result;
+      if (!usedKeys.has(`${level}|${result.song_name.trim()}`)) return result;
+    } catch (err) {
+      lastError = err;
+    }
+  }
+  if (lastResult) return lastResult;
+  throw lastError;
+}
+
+// difficulty 문자열("S20"/"D26")에서 레벨 숫자만 추출.
+function levelOf(difficulty: string): string | null {
+  return difficulty.match(/\d+/)?.[0] ?? null;
+}
 
 export default function CreateQuestPage() {
   const router = useRouter();
@@ -29,6 +65,26 @@ export default function CreateQuestPage() {
   const [picking, setPicking] = useState(false);
   const [pickingIndex, setPickingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // 최근 3개 숙제에서 쓰인 (레벨, 곡) 집합. 추첨 시 중복을 피하는 데 쓴다.
+  const [usedKeys, setUsedKeys] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    // 전체 숙제는 시작일 내림차순이므로 앞 3개가 최근 3개.
+    apiGet<Quest[]>("/quests")
+      .then((quests) => {
+        const keys = new Set<string>();
+        for (const q of quests.slice(0, 3)) {
+          for (const c of q.charts) {
+            const level = levelOf(c.difficulty);
+            if (level) keys.add(`${level}|${c.song_name.trim()}`);
+          }
+        }
+        setUsedKeys(keys);
+      })
+      .catch(() => {
+        // 조회 실패 시 중복 검사 없이 진행
+      });
+  }, []);
 
   const updateChart = (index: number, updates: Partial<ChartEntry>) => {
     setCharts((prev) =>
@@ -39,8 +95,9 @@ export default function CreateQuestPage() {
   const handlePickOne = async (index: number) => {
     const slot = DIFFICULTY_SLOTS[index];
     setPickingIndex(index);
+    setError(null);
     try {
-      const result = await pickChart(slot.level);
+      const result = await pickUnique(slot.level, usedKeys);
       updateChart(index, {
         song_name: result.song_name,
         difficulty: result.difficulty,
@@ -56,19 +113,21 @@ export default function CreateQuestPage() {
     setPicking(true);
     setError(null);
     try {
-      const results = await Promise.all(
-        DIFFICULTY_SLOTS.map((slot) => pickChart(slot.level))
-      );
-      setCharts(
-        results.map((r) => ({
-          song_name: r.song_name,
-          difficulty: r.difficulty,
-        }))
-      );
+      // 동시 요청 대신 슬롯마다 0.5초 텀을 두고 순차 추첨한다(403 회피).
+      for (let i = 0; i < DIFFICULTY_SLOTS.length; i++) {
+        if (i > 0) await sleep(SLOT_GAP_MS);
+        setPickingIndex(i);
+        const result = await pickUnique(DIFFICULTY_SLOTS[i].level, usedKeys);
+        updateChart(i, {
+          song_name: result.song_name,
+          difficulty: result.difficulty,
+        });
+      }
     } catch {
       setError("추첨에 실패했습니다. 다시 시도해주세요.");
     } finally {
       setPicking(false);
+      setPickingIndex(null);
     }
   };
 
