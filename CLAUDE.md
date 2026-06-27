@@ -60,6 +60,14 @@ App title: **망겜숙제추첨소**
 - 선착순 등록은 단일 `INSERT ... WHERE NOT EXISTS (겹치는 숙제)` 로 원자적으로 처리한다 (`meta.changes === 0` → 409).
 - 날짜는 모두 KST 기준 `YYYY-MM-DD` 문자열.
 
+## 추첨 (곡 뽑기)
+
+`/api/pick`(piurise.com 프록시)으로 슬롯별 지정곡을 뽑는다. 새 숙제 추첨(`/quests/create`)과 추첨 테스트(`/picks`)가 **동일한** 추첨 규칙을 따르며, 공통 로직은 `src/lib/pick.ts`에 둔다.
+
+- **순차 추첨**: "전부 추첨하기"는 8슬롯을 동시 요청하지 않고 슬롯마다 `SLOT_GAP_MS`(0.5초) 텀을 두고 하나씩 끊어서 요청한다 (동시 요청 시 piurise가 403을 냄).
+- **실패 재시도**: 한 슬롯당 최대 `MAX_ATTEMPTS`(5회) 재시도하고, 끝까지 실패하면 에러로 처리한다.
+- **중복 재추첨**: 최근 3개 숙제에서 쓰인 `(레벨, 곡)`과 겹치면 재추첨한다. 5회 안에 중복을 못 피하면 마지막 결과를 그대로 채택한다.
+
 ## Frontend Conventions
 
 - `output: 'export'` 정적 빌드 → 동적 라우트(`[id]`) 불가. id가 필요한 페이지는 `?id=` 쿼리 + `useSearchParams`(Suspense 경계 필수)로 처리한다 (`/quests/detail`).
