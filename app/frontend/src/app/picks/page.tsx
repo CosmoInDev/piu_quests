@@ -5,7 +5,8 @@ import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { DIFFICULTY_SLOTS } from "@/lib/constants";
-import { SLOT_GAP_MS, loadRecentUsedKeys, pickUnique, sleep } from "@/lib/pick";
+import { pickUnique } from "@/lib/charts";
+import { loadRecentUsedKeys } from "@/hooks/useQuest";
 
 interface ChartEntry {
   song_name: string;
@@ -18,8 +19,6 @@ const emptyCharts = (): ChartEntry[] =>
 // 숙제 등록과 무관하게 추첨 결과만 미리 확인해 보는 테스트 페이지.
 export default function SamplePickPage() {
   const [charts, setCharts] = useState<ChartEntry[]>(emptyCharts());
-  const [picking, setPicking] = useState(false);
-  const [pickingIndex, setPickingIndex] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   // 최근 3개 숙제에서 쓰인 (레벨, 곡) 집합. 추첨 시 중복을 피하는 데 쓴다.
   const [usedKeys, setUsedKeys] = useState<Set<string>>(new Set());
@@ -38,59 +37,30 @@ export default function SamplePickPage() {
     );
   };
 
-  const handlePickOne = async (index: number) => {
-    const slot = DIFFICULTY_SLOTS[index];
-    setPickingIndex(index);
+  const handlePickOne = (index: number) => {
     setError(null);
     try {
-      const result = await pickUnique(slot.level, usedKeys);
-      updateChart(index, {
-        song_name: result.song_name,
-        difficulty: result.difficulty,
-      });
+      updateChart(index, pickUnique(DIFFICULTY_SLOTS[index].level, usedKeys));
     } catch {
       setError("추첨에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setPickingIndex(null);
     }
   };
 
-  const handlePickAll = async () => {
-    setPicking(true);
+  const handlePickAll = () => {
     setError(null);
     try {
-      // 동시 요청 대신 슬롯마다 0.5초 텀을 두고 순차 추첨한다(403 회피).
-      for (let i = 0; i < DIFFICULTY_SLOTS.length; i++) {
-        if (i > 0) await sleep(SLOT_GAP_MS);
-        setPickingIndex(i);
-        const result = await pickUnique(DIFFICULTY_SLOTS[i].level, usedKeys);
-        updateChart(i, {
-          song_name: result.song_name,
-          difficulty: result.difficulty,
-        });
-      }
+      setCharts(DIFFICULTY_SLOTS.map((slot) => pickUnique(slot.level, usedKeys)));
     } catch {
       setError("추첨에 실패했습니다. 다시 시도해주세요.");
-    } finally {
-      setPicking(false);
-      setPickingIndex(null);
     }
   };
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-primary mb-2">추첨 테스트</h1>
-      <p className="text-sm text-muted-foreground mb-6">
-        추첨을 너무 자주 돌리면 WINDFORCE 선생님의 서버가 튕겨내서 실패할 수
-        있습니다. 살살 돌려 주세요!
-      </p>
+      <h1 className="text-2xl font-bold text-primary mb-6">추첨 테스트</h1>
 
-      <Button
-        onClick={handlePickAll}
-        disabled={picking}
-        className="mb-4 w-full"
-      >
-        {picking ? "추첨 중..." : "전부 추첨하기"}
+      <Button onClick={handlePickAll} className="mb-4 w-full">
+        전부 추첨하기
       </Button>
 
       <div className="grid gap-3">
@@ -114,15 +84,8 @@ export default function SamplePickPage() {
               className="flex-1"
               placeholder="곡명"
             />
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => handlePickOne(i)}
-              disabled={pickingIndex === i || picking}
-            >
-              <RefreshCw
-                className={`h-4 w-4 ${pickingIndex === i ? "animate-spin" : ""}`}
-              />
+            <Button variant="ghost" size="icon" onClick={() => handlePickOne(i)}>
+              <RefreshCw className="h-4 w-4" />
             </Button>
           </div>
         ))}
