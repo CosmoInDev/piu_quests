@@ -30,6 +30,7 @@ App title: **망겜숙제추첨소**
 - 함수 공유 헬퍼(라우트 아님): `app/frontend/functions-shared/`
 - D1 스키마: `app/frontend/schema.sql`
 - Cloudflare 설정: `app/frontend/wrangler.toml`
+- 추첨용 채보 데이터: `app/frontend/src/data/charts.json` (생성 스크립트 `app/frontend/scripts/update-charts.mjs`)
 
 ## UI / Localization
 
@@ -62,11 +63,12 @@ App title: **망겜숙제추첨소**
 
 ## 추첨 (곡 뽑기)
 
-`/api/pick`(piurise.com 프록시)으로 슬롯별 지정곡을 뽑는다. 새 숙제 추첨(`/quests/create`)과 추첨 테스트(`/picks`)가 **동일한** 추첨 규칙을 따르며, 공통 로직은 `src/lib/pick.ts`에 둔다.
+**로컬 채보 데이터**(`src/data/charts.json`)에서 브라우저가 직접 뽑는다. 외부 추첨 API 호출은 없다. 새 숙제 추첨(`/quests/create`)과 추첨 테스트(`/picks`)가 **동일한** 추첨 규칙을 따르며, 공통 로직은 `src/lib/charts.ts`에 둔다.
 
-- **순차 추첨**: "전부 추첨하기"는 8슬롯을 동시 요청하지 않고 슬롯마다 `SLOT_GAP_MS`(0.5초) 텀을 두고 하나씩 끊어서 요청한다 (동시 요청 시 piurise가 403을 냄).
-- **실패 재시도**: 한 슬롯당 최대 `MAX_ATTEMPTS`(5회) 재시도하고, 끝까지 실패하면 에러로 처리한다.
-- **중복 재추첨**: 최근 3개 숙제에서 쓰인 `(레벨, 곡)`과 겹치면 재추첨한다. 5회 안에 중복을 못 피하면 마지막 결과를 그대로 채택한다.
+- **데이터 출처**: [mentormin.com](https://mentormin.com/) 의 전체 채보 목록. `npm run update:charts`(`scripts/update-charts.mjs`)로 긁어와 `src/data/charts.json`을 갱신하고 커밋한다. 게임 신버전·레벨 조정이 있을 때 다시 실행하면 된다.
+- **레벨별 조건**: 19 이하는 싱글 / 아케이드·숏컷만(리믹스·풀송 배제), 20~25는 싱글·더블 / 전체 종류, 26 이상은 더블 / 전체 종류.
+- **중복 회피**: 최근 3개 숙제에서 쓰인 `(레벨, 곡)`은 후보에서 제외하고 뽑는다. 후보가 전부 제외되면 전체 후보에서 뽑는다.
+- **곡명 비교**: 과거 숙제에는 piurank 표기로 저장된 곡명이 남아 있어, `songKey()`로 공백·괄호·별표·대시 등을 지운 뒤 비교한다.
 
 ## Frontend Conventions
 

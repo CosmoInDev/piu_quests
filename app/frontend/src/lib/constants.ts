@@ -1,4 +1,4 @@
-// 추첨 슬롯. mode/type 등 추첨 조건은 레벨에 따라 서버(/api/pick)에서 결정한다.
+// 추첨 슬롯. 레벨별 모드·곡 종류 조건은 src/lib/charts.ts 에서 결정한다.
 export const DIFFICULTY_SLOTS = [
   { label: "S19", level: 19 },
   { label: "S20/D20", level: 20 },
